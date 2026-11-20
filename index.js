@@ -1,2 +1,1 @@
-console.log('Happy developing ✨')
-console.log('Test')
+navigation.navigate('certificate/verifiy')

@@ -1,24 +1,53 @@
-const API = 'https://YOUR_API_GATEWAY_URL';
+// Public verification page: anyone can check that a certificate is genuine by its code.
+// Only what is printed on the certificate is shown (the backend returns nothing else).
 
-async function verify(code) {
-  const result = document.getElementById('result');
-  const res = await fetch(`${API}/certificates/verify/${encodeURIComponent(code)}`);
-  if (!res.ok) {
-    result.textContent = res.status === 429 ? 'Too many tries, wait a moment.' : 'No certificate matches this code.';
-    return;
-  }
-  const c = await res.json();
-  result.textContent = `Genuine: awarded to ${c.attendeeName} for "${c.workshopTitle}" on ${new Date(c.issuedAt).toDateString()}.`;
+const CODE_PATTERN = /^[A-Za-z0-9_-]{20}$/;
+const form = document.getElementById('verify-form');
+const input = document.getElementById('code');
+const message = document.getElementById('message');
+const result = document.getElementById('result');
+const rows = document.getElementById('result-rows');
+
+function detailRow(label, value) {
+  const tr = el('tr');
+  tr.append(el('th', {}, label), el('td', {}, value));
+  return tr;
 }
 
-document.getElementById('verify-form').onsubmit = (ev) => {
-  ev.preventDefault();
-  verify(document.getElementById('code').value.trim());
-};
+async function verify(code) {
+  result.hidden = true;
+  if (!CODE_PATTERN.test(code)) {
+    showMessage(message, 'A verification code is exactly 20 characters: letters, numbers, - or _.', 'error');
+    return;
+  }
+  showMessage(message, 'Checking...', 'info');
+  try {
+    const c = await certApi(`/certificates/verify/${encodeURIComponent(code)}`, { auth: false });
+    showMessage(message, 'This certificate is genuine.', 'success');
+    rows.replaceChildren(
+      detailRow('Awarded to', c.attendeeName),
+      detailRow('Workshop', c.workshopTitle),
+      detailRow('Issued', formatDate(c.issuedAt)),
+      detailRow('Verification code', code)
+    );
+    result.hidden = false;
+  } catch (err) {
+    if (err.status === 404) showMessage(message, 'No certificate matches this code. It may be fake or mistyped.', 'error');
+    else if (err.status === 429) showMessage(message, 'Too many checks in a short time. Wait a moment and try again.', 'error');
+    else showMessage(message, err.message, 'error');
+  }
+}
 
-// Links in emails look like verify.html?code=XXXX
-const code = new URLSearchParams(location.search).get('code');
-if (code) {
-  document.getElementById('code').value = code;
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const code = input.value.trim();
+  history.replaceState(null, '', `?code=${encodeURIComponent(code)}`); // shareable link
   verify(code);
+});
+
+// Links on the PDF and in emails look like verify.html?code=XXXX
+const fromLink = new URLSearchParams(window.location.search).get('code');
+if (fromLink) {
+  input.value = fromLink.trim();
+  verify(input.value);
 }

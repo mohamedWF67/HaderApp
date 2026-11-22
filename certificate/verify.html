@@ -1,21 +1,47 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verify a certificate</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hader - Verify a certificate</title>
+  <link rel="stylesheet" href="../shared/style.css">
   <link rel="stylesheet" href="certificate.css">
-  <script src="verify.js" defer></script>
 </head>
 <body>
+  <!-- Public page: no login needed, so a simple top bar instead of the shared nav -->
+  <div id="nav">
+    <a class="brand" href="../index.html">Hader<span lang="ar">حاضر</span></a>
+    <a href="verify.html" aria-current="page">Verify a certificate</a>
+  </div>
+
   <main>
     <h1>Verify a certificate</h1>
-    <p>Enter the code printed on the certificate. No login needed.</p>
-    <form id="verify-form">
-      <input id="code" placeholder="Verification code" maxlength="20" required>
-      <button>Verify</button>
-    </form>
-    <p id="result"></p>
+    <p class="lead">Enter the verification code printed at the bottom of the certificate. Anyone can check a certificate here; no login needed.</p>
+
+    <section class="panel">
+      <form id="verify-form" class="verify-form">
+        <div>
+          <label for="code">Verification code</label>
+          <input id="code" type="text" required maxlength="20" autocomplete="off" spellcheck="false"
+                 placeholder="20 letters, numbers, - or _">
+        </div>
+        <div class="form-actions"><button type="submit">Verify</button></div>
+      </form>
+    </section>
+
+    <p id="message" class="message" hidden></p>
+
+    <section id="result" class="panel" hidden>
+      <h2>Certificate details</h2>
+      <table class="verify-result"><tbody id="result-rows"></tbody></table>
+    </section>
   </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="certificate-config.js"></script>
+  <script src="certificate-api.js"></script>
+  <script src="verify.js"></script>
 </body>
 </html>

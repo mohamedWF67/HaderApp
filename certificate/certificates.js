@@ -1,81 +1,176 @@
-const API = 'https://YOUR_API_GATEWAY_URL'; // printed when the API is deployed
-const token = localStorage.getItem('token'); // saved by the shared login page
+// My certificates page (attendees): list my certificates, download them as PDF,
+// and generate a certificate for a workshop once every session has been attended.
 
-const $ = (id) => document.getElementById(id);
-const show = (text) => ($('message').textContent = text); // textContent, never innerHTML (XSS)
+const message = document.getElementById('message');
+const certList = document.getElementById('certificate-list');
+const eligibilityList = document.getElementById('eligibility-list');
 
-async function api(path, options = {}) {
-  const res = await fetch(API + path, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Error ${res.status}`);
-  }
-  return res;
+// The shared nav has no Certificates link yet, so add one on this page.
+function addCertificatesLink() {
+  const nav = document.getElementById('nav');
+  const link = el('a', { href: appUrl('certificate/certificates.html') }, 'Certificates');
+  link.setAttribute('aria-current', 'page');
+  nav.insertBefore(link, nav.querySelector('.nav-right'));
 }
 
-async function loadList() {
-  const { certificates } = await (await api('/certificates/me')).json();
-  $('list').replaceChildren();
-  if (!certificates.length) $('list').textContent = 'No certificates yet.';
-  for (const c of certificates) {
-    const row = document.createElement('div');
-    row.className = 'card';
-    row.textContent = `${c.workshop_title} - code ${c.verification_code} `;
-    const btn = document.createElement('button');
-    btn.textContent = 'Download PDF';
-    btn.onclick = () => download(c.certificate_id);
-    row.append(btn);
-    $('list').append(row);
-  }
+// ---------- My certificates ----------
+function certificateRow(c) {
+  const row = el('article', { className: 'workshop' });
+
+  const info = el('div');
+  const code = el('p', { className: 'host' }, 'Verification code: ');
+  code.append(el('code', { className: 'cert-code' }, c.verification_code));
+  info.append(el('h3', {}, c.workshop_title), el('p', { className: 'host' }, `Awarded to ${c.attendee_name}`), code);
+
+  const side = el('div', { className: 'side' });
+  const download = el('button', {}, 'Download PDF');
+  download.addEventListener('click', () => downloadCertificate(c, download));
+  side.append(download, el('a', { href: verifyPageUrl(c.verification_code), className: 'cert-link' }, 'Public verification page'));
+
+  row.append(dateBlock(c.issued_at), info, side);
+  return row;
 }
 
-async function download(id) {
+async function loadCertificates() {
   try {
-    const blob = await (await api(`/certificates/${id}`)).blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'certificate.pdf';
-    a.click();
-  } catch (e) {
-    show(e.message);
-  }
-}
-
-async function checkWorkshop(workshopId) {
-  try {
-    const e = await (await api(`/certificates/eligibility/${encodeURIComponent(workshopId)}`)).json();
-    $('eligibility').textContent = `You attended ${e.attendedSessions} of ${e.totalSessions} sessions. `;
-    if (e.eligible && !e.certificateId) {
-      const btn = document.createElement('button');
-      btn.textContent = 'Generate certificate';
-      btn.onclick = () => generate(workshopId);
-      $('eligibility').append(btn);
-    } else if (e.certificateId) {
-      $('eligibility').append('You already have this certificate.');
+    const { certificates } = await certApi('/certificates/me');
+    if (certificates.length === 0) {
+      certList.replaceChildren(el('p', { className: 'empty' }, 'You have no certificates yet.'));
+      return [];
     }
-  } catch (e) {
-    $('eligibility').textContent = e.message;
+    certList.replaceChildren(...certificates.map(certificateRow));
+    return certificates;
+  } catch (err) {
+    certList.replaceChildren();
+    showMessage(message, err.message, 'error');
+    return [];
   }
 }
 
-async function generate(workshopId) {
+// API Gateway may return the PDF as raw bytes or as base64 text, depending on its settings.
+async function downloadCertificate(c, btn) {
+  btn.disabled = true;
   try {
-    const c = await (await api('/certificates', { method: 'POST', body: JSON.stringify({ workshopId }) })).json();
-    show(c.emailSent ? 'Certificate created and emailed to you.' : 'Certificate created.');
-    $('eligibility').textContent = '';
-    loadList();
-  } catch (e) {
-    show(e.message);
+    const res = await certFetch(`/certificates/${encodeURIComponent(c.certificate_id)}`);
+    let bytes = new Uint8Array(await res.arrayBuffer());
+    const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // "%PDF"
+    if (!isPdf) {
+      const text = new TextDecoder().decode(bytes).trim();
+      bytes = Uint8Array.from(atob(text), ch => ch.charCodeAt(0));
+    }
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    const a = el('a', { href: url, download: `certificate-${c.workshop_title.replace(/[^\w-]+/g, '_')}.pdf` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    showMessage(message, `Could not download the certificate: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
   }
 }
 
-$('check-form').onsubmit = (ev) => {
-  ev.preventDefault();
-  checkWorkshop($('workshop-id').value.trim());
-};
+// ---------- Get a certificate ----------
+function eligibilityRow(r, issued) {
+  const w = r.workshop || {};
+  const workshopId = w.workshopId ?? r.workshopId;
+  const finished = new Date(w.date) <= new Date();
+  const row = el('article', { className: 'workshop' });
 
-if (!token) show('Please log in first.');
-else loadList().catch((e) => show(e.message));
+  const info = el('div');
+  info.append(el('h3', {}, w.title || 'Workshop'));
+  const status = el('p', { className: 'cert-status' }, 'Checking your attendance...');
+  info.append(status);
+
+  const side = el('div', { className: 'side' });
+  row.append(dateBlock(w.date), info, side);
+
+  if (issued.has(String(workshopId))) {
+    status.textContent = 'Certificate issued. See "My certificates" above.';
+    status.className = 'cert-status done';
+  } else if (!finished) {
+    status.textContent = 'This workshop has not finished yet.';
+  } else if (workshopId === undefined) {
+    status.textContent = 'Workshop id missing, cannot check attendance.';
+  } else {
+    checkEligibility(workshopId, w.title, status, side);
+  }
+  return row;
+}
+
+async function checkEligibility(workshopId, title, status, side) {
+  try {
+    const e = await certApi(`/certificates/eligibility/${encodeURIComponent(workshopId)}`);
+    status.textContent = `You attended ${e.attendedSessions} of ${e.totalSessions} sessions.`;
+    if (e.certificateId) {
+      status.textContent += ' Certificate issued.';
+      status.className = 'cert-status done';
+    } else if (e.eligible) {
+      const btn = el('button', {}, 'Generate certificate');
+      btn.addEventListener('click', () => generateCertificate(workshopId, title, btn));
+      side.append(btn);
+    } else {
+      status.textContent += ' You need to attend all of them to get a certificate.';
+    }
+  } catch (err) {
+    status.textContent = err.status === 404
+      ? 'No attendance record found for this workshop.'
+      : 'Attendance cannot be checked right now. Try again later.';
+  }
+}
+
+async function generateCertificate(workshopId, title, btn) {
+  btn.disabled = true;
+  showMessage(message, `Generating your certificate for ${title}...`, 'info');
+  try {
+    const c = await certApi('/certificates', { method: 'POST', body: { workshopId: Number(workshopId) } });
+    showMessage(message, c.emailSent
+      ? `Certificate created for ${title}. We also emailed you a link.`
+      : `Certificate created for ${title}. You can download it below.`, 'success');
+  } catch (err) {
+    showMessage(message, err.status === 409 ? 'You already have a certificate for this workshop.' : err.message,
+      err.status === 409 ? 'info' : 'error');
+    btn.disabled = false;
+  }
+  await loadAll();
+}
+
+async function loadEligibility(certificates) {
+  try {
+    const regs = await api(CONFIG.REGISTRATION_API, '/registrations/me');
+    if (regs.length === 0) {
+      const empty = el('p', { className: 'empty' }, 'You have not registered for any workshops yet. ');
+      empty.append(el('a', { href: appUrl('registration/workshops.html') }, 'Find a workshop'));
+      eligibilityList.replaceChildren(empty);
+      return;
+    }
+    const issued = new Set(certificates.map(c => String(c.workshop_id)));
+    eligibilityList.replaceChildren(...regs.map(r => eligibilityRow(r, issued)));
+  } catch (err) {
+    eligibilityList.replaceChildren(el('p', { className: 'empty' }, `Could not load your workshops: ${err.message}`));
+  }
+}
+
+async function loadAll() {
+  const certificates = await loadCertificates();
+  await loadEligibility(certificates);
+}
+
+(async function start() {
+  if (!requireLoginPage()) return;
+  try {
+    const me = await loadNav();
+    addCertificatesLink();
+    if (me.role !== 'attendee') {
+      showMessage(message, 'Certificates are for attendees. Organizers can see their workshops on the Workshops page.', 'info');
+      certList.replaceChildren();
+      eligibilityList.replaceChildren();
+      return;
+    }
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+    return;
+  }
+  await loadAll();
+})();

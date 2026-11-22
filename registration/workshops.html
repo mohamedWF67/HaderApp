@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hader - Workshops</title>
+  <link rel="stylesheet" href="../shared/style.css">
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main>
+    <h1>Workshops</h1>
+    <p class="lead" id="lead">Pick a workshop and save your seat. Filled blocks are taken seats.</p>
+    <p id="message" class="message" hidden></p>
+
+    <!-- Organizers only: create or edit a workshop -->
+    <section id="organizer-panel" class="panel" hidden>
+      <h2 id="form-title">New workshop</h2>
+      <form id="workshop-form">
+        <label for="title">Title</label>
+        <input id="title" type="text" required minlength="3" maxlength="100">
+        <label for="description">Description</label>
+        <textarea id="description" maxlength="1000"></textarea>
+        <div class="row">
+          <div>
+            <label for="date">Date and time</label>
+            <input id="date" type="datetime-local" required>
+          </div>
+          <div>
+            <label for="seats">Total seats</label>
+            <input id="seats" type="number" required min="1" max="1000">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="save-button">Create workshop</button>
+          <button type="button" id="cancel-edit" class="secondary" hidden>Cancel editing</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Organizers only: who registered for a workshop -->
+    <section id="attendees-panel" class="panel" hidden>
+      <h2 id="attendees-title">Registered attendees</h2>
+      <div id="attendees"></div>
+      <button type="button" class="secondary" id="close-attendees">Close</button>
+    </section>
+
+    <section class="workshops" id="workshop-list">
+      <p class="empty">Loading workshops...</p>
+    </section>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="workshops.js"></script>
+</body>
+</html>

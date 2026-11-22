@@ -1,0 +1,205 @@
+/* HaderApp - "Hader" (حاضر) means "present", the answer at roll call.
+   The design is built around seats: each workshop shows its seats as blocks. */
+
+:root {
+  --paper: #F2F5F0;      /* page background, cool sage-white */
+  --surface: #FFFFFF;    /* rows and panels */
+  --ink: #14231F;        /* text, deep green-black */
+  --ink-soft: #4E5F59;   /* secondary text */
+  --line: #D5DDD7;       /* borders */
+  --cobalt: #2F5BEA;     /* actions and taken seats */
+  --cobalt-dark: #2348C4;
+  --mustard: #E0A100;    /* full / almost full */
+  --red: #C2362B;        /* errors and cancel */
+  --green: #2F7D4F;      /* success */
+
+  --display: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif;
+  --body: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+/* The hidden attribute must always win over display rules below */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.55;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; }
+
+/* ---------- Top bar ---------- */
+#nav {
+  display: flex;
+  align-items: baseline;
+  gap: 1.75rem;
+  padding: 1.1rem clamp(1rem, 5vw, 3.5rem);
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+}
+#nav a { color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+#nav a:hover { color: var(--ink); }
+#nav a[aria-current="page"] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--cobalt); }
+#nav .brand {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-right: 0.5rem;
+}
+#nav .brand span { font-weight: 400; color: var(--cobalt); margin-left: 0.35rem; }
+#nav .nav-right { margin-left: auto; display: flex; gap: 1.25rem; align-items: baseline; }
+#nav .who { color: var(--ink-soft); font-size: 0.95rem; }
+
+/* ---------- Page ---------- */
+main { width: min(1040px, 92%); margin: 2.5rem auto 4rem; }
+
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-stretch: condensed;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+}
+.lead { color: var(--ink-soft); margin: 0 0 2rem; max-width: 60ch; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 0 0 1rem; }
+
+/* ---------- Buttons ---------- */
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border: 2px solid var(--cobalt);
+  border-radius: 999px;
+  background: var(--cobalt);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover { background: var(--cobalt-dark); border-color: var(--cobalt-dark); }
+button:disabled { background: transparent; border-color: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+button.secondary { background: transparent; color: var(--ink); border-color: var(--ink); }
+button.secondary:hover { background: var(--ink); color: var(--paper); }
+button.danger { background: transparent; color: var(--red); border-color: var(--red); }
+button.danger:hover { background: var(--red); color: #fff; }
+button.link { background: none; border: none; padding: 0; color: var(--ink); text-decoration: underline; font-weight: 500; border-radius: 0; }
+button.link:hover { color: var(--cobalt); background: none; }
+
+/* ---------- Forms ---------- */
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: 1.75rem;
+  margin-bottom: 2.5rem;
+}
+form { display: grid; gap: 0.5rem; }
+label { font-weight: 600; font-size: 0.95rem; margin-top: 0.5rem; }
+input, textarea {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-bottom: 2px solid var(--ink);
+  border-radius: 2px;
+}
+input:focus, textarea:focus { outline: none; border-bottom-color: var(--cobalt); background: #fff; }
+textarea { min-height: 90px; resize: vertical; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+small { color: var(--ink-soft); }
+
+/* ---------- Workshop rows ---------- */
+.workshops { display: grid; gap: 0.75rem; }
+.workshop {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr minmax(220px, 300px);
+  gap: 1.5rem;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--cobalt);
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+}
+.workshop.is-full { border-left-color: var(--mustard); }
+.workshop.is-past { border-left-color: var(--line); opacity: 0.75; }
+
+.date-block { text-align: center; font-family: var(--display); line-height: 1; }
+.date-block .day { display: block; font-size: 2.6rem; font-weight: 700; font-stretch: condensed; }
+.date-block .month { display: block; font-size: 1rem; color: var(--ink-soft); margin-top: 0.2rem; }
+.date-block .time { display: block; font-size: 0.95rem; margin-top: 0.45rem; color: var(--cobalt); font-weight: 600; }
+
+.workshop h3 { font-family: var(--display); font-size: 1.3rem; font-weight: 600; margin: 0 0 0.2rem; line-height: 1.2; }
+.workshop .host { color: var(--ink-soft); font-size: 0.92rem; margin: 0; }
+.workshop .desc { margin: 0.5rem 0 0; max-width: 60ch; }
+
+.side { display: grid; gap: 0.7rem; justify-items: start; }
+.side .buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* The seat strip: one block per seat */
+.seat-strip { display: flex; flex-wrap: wrap; gap: 3px; max-width: 300px; }
+.seat { width: 11px; height: 14px; border-radius: 3px 3px 1px 1px; border: 1.5px solid var(--cobalt); background: transparent; }
+.seat.taken { background: var(--cobalt); }
+.is-full .seat { border-color: var(--mustard); }
+.is-full .seat.taken { background: var(--mustard); }
+.seat-bar { width: 100%; max-width: 300px; height: 14px; border: 1.5px solid var(--cobalt); border-radius: 3px; overflow: hidden; }
+.seat-bar span { display: block; height: 100%; background: var(--cobalt); }
+.seat-count { font-family: var(--display); font-size: 1.05rem; font-weight: 600; }
+.is-full .seat-count { color: #8A6300; }
+
+/* ---------- Messages ---------- */
+.message { padding: 0.8rem 1rem; border-radius: 2px; margin-bottom: 1.5rem; border-left: 5px solid; background: var(--surface); }
+.message.info { border-color: var(--cobalt); }
+.message.success { border-color: var(--green); color: #1F5A37; }
+.message.error { border-color: var(--red); color: #8E241C; }
+
+/* ---------- Attendee table ---------- */
+table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; }
+th { text-align: left; font-family: var(--display); font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--ink); }
+td { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); }
+
+.empty { color: var(--ink-soft); padding: 2rem 0; }
+
+/* ---------- Login page ---------- */
+.auth-page { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+.auth-intro {
+  background: var(--cobalt);
+  color: #fff;
+  padding: clamp(2rem, 6vw, 5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.wordmark { font-family: var(--display); font-weight: 700; font-size: clamp(3.5rem, 9vw, 6.5rem); line-height: 0.9; letter-spacing: -0.03em; margin: 0; }
+.auth-intro .wordmark-ar { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.2; margin: 0.3rem 0 0; opacity: 0.85; }
+.auth-intro p { max-width: 34ch; font-size: 1.1rem; margin: 2rem 0 0; }
+.auth-intro .demo-seats { display: flex; gap: 5px; flex-wrap: wrap; max-width: 260px; margin-top: 2rem; }
+.auth-intro .demo-seats .seat { border-color: #fff; width: 14px; height: 18px; }
+.auth-intro .demo-seats .seat.taken { background: #fff; }
+
+.auth-form { padding: clamp(2rem, 6vw, 5rem); display: flex; flex-direction: column; justify-content: center; max-width: 520px; }
+.switch { margin-top: 1.25rem; color: var(--ink-soft); }
+
+@media (max-width: 760px) {
+  .workshop { grid-template-columns: 4rem 1fr; }
+  .side { grid-column: 1 / -1; }
+  .row { grid-template-columns: 1fr; }
+  .auth-page { grid-template-columns: 1fr; }
+  .auth-intro { min-height: auto; }
+  #nav { flex-wrap: wrap; gap: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+.workshop h3, .workshop .desc, td { overflow-wrap: anywhere; }

@@ -1,1 +1,5 @@
-/.idea
+/.ideanode_modules/
+.env
+.env.*
+!.env.example
+.vercel

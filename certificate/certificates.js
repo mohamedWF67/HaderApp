@@ -148,7 +148,8 @@ async function loadEligibility(certificates) {
     const issued = new Set(certificates.map(c => String(c.workshop_id)));
     eligibilityList.replaceChildren(...regs.map(r => eligibilityRow(r, issued)));
   } catch (err) {
-    eligibilityList.replaceChildren(el('p', { className: 'empty' }, `Could not load your workshops: ${err.message}`));
+    eligibilityList.replaceChildren(el('p', { className: 'empty' },
+      `Your workshops come from the Registration service, which cannot be reached from ${window.location.origin} right now.`));
   }
 }
 
@@ -157,19 +158,41 @@ async function loadAll() {
   await loadEligibility(certificates);
 }
 
+// Role from the login token, only to choose what to show (the backend enforces the real rule).
+function roleFromToken() {
+  try {
+    const payload = JSON.parse(atob(getToken().split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return (payload.app_metadata && payload.app_metadata.role) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// If the Registration API cannot be reached (it builds the shared nav), draw a simple nav here
+// so the certificate page still works on its own.
+function fallbackNav() {
+  const nav = document.getElementById('nav');
+  const brand = el('a', { href: appUrl('registration/workshops.html'), className: 'brand' }, 'Hader');
+  brand.append(el('span', { lang: 'ar' }, 'حاضر'));
+  const right = el('span', { className: 'nav-right' });
+  right.append(el('button', { className: 'link', onclick: logout }, 'Log out'));
+  nav.replaceChildren(brand, el('a', { href: appUrl('registration/workshops.html') }, 'Workshops'), right);
+}
+
 (async function start() {
   if (!requireLoginPage()) return;
+  let role;
   try {
-    const me = await loadNav();
-    addCertificatesLink();
-    if (me.role !== 'attendee') {
-      showMessage(message, 'Certificates are for attendees. Organizers can see their workshops on the Workshops page.', 'info');
-      certList.replaceChildren();
-      eligibilityList.replaceChildren();
-      return;
-    }
+    role = (await loadNav()).role;
   } catch (err) {
-    showMessage(message, err.message, 'error');
+    fallbackNav();
+    role = roleFromToken();
+  }
+  addCertificatesLink();
+  if (role && role !== 'attendee') {
+    showMessage(message, 'Certificates are for attendees. Organizers can see their workshops on the Workshops page.', 'info');
+    certList.replaceChildren();
+    eligibilityList.replaceChildren();
     return;
   }
   await loadAll();

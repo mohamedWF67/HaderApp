@@ -103,21 +103,22 @@ async function loadSessions() {
     return;
   }
   for (const s of sessions) {
-    const row = document.createElement('div');
-    row.className = 'attendance-session';
-    const left = document.createElement('div');
-    const title = document.createElement('strong');
-    title.textContent = s.title;
-    const times = document.createElement('span');
-    times.className = 'attendance-date';
-    times.textContent = new Date(s.startTime).toLocaleString() + ' to ' +
-      new Date(s.endTime).toLocaleString();
-    const status = document.createElement('span');
-    status.className = s.checkinStatus === 'open' ? 'attendance-open' : 'attendance-closed';
-    status.textContent = s.checkinStatus === 'open' ? 'Open' : 'Closed';
-    left.append(title, times);
-    row.append(left, status);
-    list.append(row);
+    // Reuse Nourhan's workshop card and date-block components for visual consistency.
+    const card = el('article', { className: 'workshop attendance-session' });
+    const info = el('div');
+    info.append(
+      el('h3', {}, s.title),
+      el('p', { className: 'host' }, 'Session #' + s.sessionId),
+      el('p', { className: 'attendance-meta' },
+        'Ends ' + formatDate(s.endTime))
+    );
+    const side = el('div', { className: 'side' });
+    const status = el('span', {
+      className: 'attendance-status ' + (s.checkinStatus === 'open' ? 'open' : 'closed')
+    }, s.checkinStatus === 'open' ? '● Check-in open' : '● Check-in closed');
+    side.append(status);
+    card.append(dateBlock(s.startTime), info, side);
+    list.append(card);
   }
 }
 
@@ -235,6 +236,7 @@ byId('view-summary').addEventListener('click', handle(async () => {
   try {
     me = await loadNav();
     organizerTools.hidden = me.role !== 'organizer';
+    byId('organizer-summary').hidden = me.role !== 'organizer';
     await loadWorkshops();
   } catch (e) {
     notify(e.message, 'error');

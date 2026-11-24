@@ -1,21 +1,28 @@
-/* Attendance page additions. Shared HaderApp styling stays in shared/style.css. */
-.attendance-heading { display: flex; gap: 1rem; align-items: center; justify-content: space-between; }
-.attendance-heading h2 { margin: 0; }
-.attendance-help { color: var(--ink-soft); margin: 0.25rem 0 1rem; }
-.attendance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.attendance-heading button { flex-shrink: 0; }
-#organizer-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1rem; }
-#organizer-tools > .panel { min-width: 0; }
-#organizer-tools .panel:nth-child(4) { grid-column: 1 / -1; }
-#workshop, #checkin-session, #attendance-session, #registration { display: block; width: 100%; margin-bottom: 0.8rem; }
-#sessions { margin-top: 0.8rem; }
-.attendance-session, .attendance-summary-row { display: flex; gap: 1rem; align-items: center; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
-.attendance-session:last-child, .attendance-summary-row:last-child { border-bottom: 0; }
-.attendance-session strong, .attendance-summary-row strong { display: block; }
-.attendance-date { color: var(--ink-soft); font-size: 0.9rem; }
-.attendance-open { color: var(--green); font-weight: 700; white-space: nowrap; }
-.attendance-closed { color: var(--ink-soft); font-weight: 700; white-space: nowrap; }
-@media (max-width: 640px) {
-  .attendance-grid { grid-template-columns: 1fr; }
-  .attendance-heading { align-items: flex-start; }
+/* Attendance additions on top of the exact shared HaderApp theme. */
+.attendance-heading { display:flex; gap:1rem; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.attendance-heading h2 { margin:0; }
+.attendance-heading button { flex-shrink:0; }
+.attendance-help { color:var(--ink-soft); margin:0.25rem 0 1rem; }
+#organizer-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:2.5rem; }
+#organizer-tools > .panel { margin-bottom:0; min-width:0; }
+#organizer-tools > .panel:first-child { grid-column:1 / -1; }
+select {
+  display:block; width:100%; min-width:0; padding:0.7rem 0.8rem; margin:0.3rem 0 0.75rem;
+  font:inherit; color:var(--ink); background:var(--paper);
+  border:1px solid var(--line); border-bottom:2px solid var(--ink); border-radius:2px;
+}
+select:focus { outline:none; border-bottom-color:var(--cobalt); background:#fff; }
+#organizer-summary { margin-top:2rem; }
+.attendance-session .side { justify-items:start; }
+.attendance-status { font-size:0.92rem; font-weight:700; border-radius:2px; }
+.attendance-status.open { color:var(--green); }
+.attendance-status.closed { color:var(--ink-soft); }
+.attendance-meta { color:var(--ink-soft); font-size:0.92rem; margin:0.35rem 0 0; }
+.attendance-summary-row { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:0.65rem 0; border-bottom:1px solid var(--line); }
+.attendance-summary-row:last-child { border-bottom:0; }
+.attendance-summary-row strong { font-weight:600; }
+@media (max-width:760px) {
+  #organizer-tools { grid-template-columns:1fr; }
+  #organizer-tools > .panel:first-child { grid-column:auto; }
+  .attendance-heading { align-items:flex-start; }
 }

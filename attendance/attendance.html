@@ -11,43 +11,45 @@
   <div id="nav"></div>
   <main>
     <h1>Attendance &amp; Check-in</h1>
-    <p class="lead">Create workshop sessions, manage check-in and review attendance.</p>
-    <p id="message" class="message" hidden></p>
+    <p class="lead">Manage workshop sessions and check-in. Registered attendees can view their sessions.</p>
+    <p id="message" class="message" role="status" aria-live="polite" hidden></p>
 
     <section class="panel">
       <div class="attendance-heading">
         <div>
-          <h2>Workshop</h2>
-          <p class="attendance-help">Only workshops you own or have registered for are shown.</p>
+          <h2>Choose a workshop</h2>
+          <p class="attendance-help">Workshops from the shared Hader registration system.</p>
         </div>
         <button class="secondary" id="refresh" type="button">Refresh</button>
       </div>
-      <label for="workshop">Select workshop</label>
-      <select id="workshop"><option value="">Loading workshops...</option></select>
+      <label for="workshop">Workshop</label>
+      <select id="workshop" aria-label="Workshop"><option value="">Loading workshops...</option></select>
     </section>
 
     <div id="organizer-tools" hidden>
       <section class="panel">
-        <h2>Create a session</h2>
+        <h2>New session</h2>
+        <p class="attendance-help">Create a session for your workshop, just like creating a workshop in Registration.</p>
         <form id="create-session">
           <label for="session-title">Session title</label>
-          <input id="session-title" type="text" required minlength="2" maxlength="120">
-          <div class="attendance-grid">
+          <input id="session-title" type="text" required minlength="3" maxlength="120" placeholder="Introduction to Cloud Security">
+          <div class="row">
             <div>
-              <label for="session-start">Start</label>
+              <label for="session-start">Start date and time</label>
               <input id="session-start" type="datetime-local" required>
             </div>
             <div>
-              <label for="session-end">End</label>
+              <label for="session-end">End date and time</label>
               <input id="session-end" type="datetime-local" required>
             </div>
           </div>
-          <button type="submit">Create session</button>
+          <div class="form-actions"><button type="submit">Create session</button></div>
         </form>
       </section>
 
       <section class="panel">
-        <h2>Open or close check-in</h2>
+        <h2>Session check-in</h2>
+        <p class="attendance-help">Only open sessions accept attendance.</p>
         <label for="checkin-session">Session</label>
         <select id="checkin-session"></select>
         <div class="form-actions">
@@ -57,26 +59,27 @@
       </section>
 
       <section class="panel">
-        <h2>Mark attendance</h2>
+        <h2>Mark attendee present</h2>
+        <p class="attendance-help">Select a registered attendee. Each attendee can only be checked in once per session.</p>
         <label for="attendance-session">Session</label>
         <select id="attendance-session"></select>
         <label for="registration">Registered attendee</label>
         <select id="registration"></select>
         <div class="form-actions"><button type="button" id="mark-present">Mark present</button></div>
       </section>
-
-      <section class="panel">
-        <div class="attendance-heading">
-          <h2>Attendance summary</h2>
-          <button type="button" id="view-summary" class="secondary">View summary</button>
-        </div>
-        <div id="summary" class="attendance-help">Select View summary to load results.</div>
-      </section>
     </div>
 
-    <section class="panel">
-      <h2>Workshop sessions</h2>
-      <div id="sessions" class="attendance-help">Select a workshop to see its sessions.</div>
+    <h2>Workshop sessions</h2>
+    <section class="workshops" id="sessions" aria-live="polite">
+      <p class="empty">Choose a workshop to see its sessions.</p>
+    </section>
+
+    <section id="organizer-summary" class="panel" hidden>
+      <div class="attendance-heading">
+        <h2>Attendance summary</h2>
+        <button type="button" id="view-summary" class="secondary">View summary</button>
+      </div>
+      <div id="summary" class="attendance-help">Select View summary to load results.</div>
     </section>
   </main>
   <script src="../shared/config.js"></script>

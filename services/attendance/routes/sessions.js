@@ -382,6 +382,59 @@ router.get('/:workshopId/attendance/summary', requireLogin, requireOrganizer, as
   }
 });
 
+// GET /workshops/:workshopId/attendance/:attendeeId
+// Called by the Certificate service using the attendee's own Supabase access token.
+// Never trust the attendeeId in the URL: it MUST match the verified JWT identity.
+// Only the attendee can read their counts. Organizers use the separate summary route.
+router.get('/:workshopId/attendance/:attendeeId', requireLogin, async (req, res, next) => {
+  const workshopId = Number(req.params.workshopId);
+  if (!Number.isInteger(workshopId) || workshopId < 1 || workshopId > 2147483647) {
+    return res.status(400).json({ code: 'INVALID_WORKSHOP_ID', error: 'workshopId must be a positive integer.' });
+  }
+
+  if (req.user.role !== 'attendee' || req.params.attendeeId !== req.user.userId) {
+    return res.status(403).json({
+      code: 'FORBIDDEN',
+      error: 'You can only view your own attendance.'
+    });
+  }
+
+  try {
+    // One query ensures both counts use the same database snapshot. Only
+    // sessions belonging to this workshop count, and only for this registration.
+    const { rows } = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int
+          FROM public.sessions s
+          WHERE s.workshop_id = r.workshop_id) AS total_sessions,
+         (SELECT COUNT(DISTINCT a.session_id)::int
+          FROM public.attendance a
+          JOIN public.sessions s
+            ON s.session_id = a.session_id AND s.workshop_id = r.workshop_id
+          WHERE a.registration_id = r.registration_id) AS attended_sessions
+       FROM public.registrations r
+       WHERE r.workshop_id = $1 AND r.attendee_id = $2
+       LIMIT 1`,
+      [workshopId, req.user.userId]
+    );
+    if (!rows.length) {
+      return res.status(404).json({
+        code: 'REGISTRATION_NOT_FOUND',
+        error: 'Workshop not found or you are not registered.'
+      });
+    }
+
+    return res.json({
+      workshopId,
+      attendeeId: req.user.userId,
+      totalSessions: rows[0].total_sessions,
+      attendedSessions: rows[0].attended_sessions
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /workshops/:workshopId/sessions
 // The workshop's organizer or a registered attendee can list its sessions.
 // Only basic session data is returned; individual attendance stays private.

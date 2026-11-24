@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hader - Notifications</title>
+  <link rel="stylesheet" href="../shared/style.css">
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main>
+    <h1>Notifications</h1>
+    <p class="lead">Seats you got from a waiting list, changes to your workshops, and reminders.</p>
+    <p id="message" class="message" hidden></p>
+    <section class="notes" id="note-list">
+      <p class="empty">Loading...</p>
+    </section>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="notifications.js"></script>
+</body>
+</html>

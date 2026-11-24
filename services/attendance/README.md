@@ -22,6 +22,19 @@ node demo-server.js
 ```
 Open http://localhost:3003
 
+## Certificate service integration
+The Certificate backend calls `GET /workshops/{workshopId}/attendance/{attendeeId}`
+with the **attendee's Supabase Bearer access token**. The route returns
+`{ workshopId, attendeeId, totalSessions, attendedSessions }`.
+The authenticated caller must be an attendee and their JWT user ID must match
+the URL attendee ID. Unregistered attendees receive 404; other users receive 403.
+Zero sessions means `totalSessions: 0`, so the Certificate service treats the
+workshop as ineligible. The organizer-only `/attendance/summary` route is unchanged.
+
+After deploying to Floci again, update Waleed's `ATTENDANCE_API_URL` setting
+to the URL printed by `deploy-attendance.ps1`. This local address only works
+on the same laptop/Floci environment.
+
 ## Local Floci
 ```powershell
 cd services/attendance

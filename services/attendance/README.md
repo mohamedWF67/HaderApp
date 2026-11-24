@@ -41,6 +41,26 @@ cd services/attendance
 docker compose -f infra/docker-compose.floci.yml up -d
 .\infra\deploy-attendance.ps1
 ```
-The PowerShell deployment script targets localhost:4566 only and rejects real AWS accounts. The Lambda ZIP omits secrets. Configure `CORS_ORIGINS=http://localhost:8080,http://localhost:3003` in your local `.env` before deploying if you test the shared frontend on port 8080.
+The PowerShell deployment script targets localhost:4566 only and rejects real AWS accounts. The Lambda ZIP omits secrets.
+
+## Vercel frontend origin (CORS)
+The public Hader frontend is hosted at **https://hader-app-five.vercel.app**.
+The Attendance Lambda Express API explicitly allows that browser origin, while preserving
+`http://localhost:3003` for the demo and any additional local origins listed in `.env`.
+For example, this optional setting also allows the shared frontend on port 8080:
+```dotenv
+CORS_ORIGINS=http://localhost:8080,http://localhost:3003,https://hader-app-five.vercel.app
+```
+The Floci packaging script carries the Vercel origin into Lambda settings even if an
+older local `.env` specifies only localhost. Run `.\\infra\\deploy-attendance.ps1` again
+after pulling these changes to update the running Lambda.
+
+**CORS does not publish your API.** `attendance/attendance-config.js` still points to a
+localhost Floci API, which is not reachable by visitors on Vercel (and plain HTTP
+is blocked from an HTTPS site). To make the live Attendance page work, deploy the
+Attendance API to a public HTTPS host and update `ATTENDANCE_API` to that **backend**
+URL. Do not set `ATTENDANCE_API` to the Vercel **frontend** address. Also allow
+that backend host in the frontend's Content-Security-Policy `connect-src` if CSP
+is enabled on the Attendance page.
 
 This branch has the full backend code. The separate shared frontend lives under `/attendance/`. **A local Floci URL is not a public HTTPS endpoint.** When the team deploys the frontend publicly, host the Attendance API over HTTPS and change `attendance/attendance-config.js` accordingly. The full three-service workflow and certificate integration still need end-to-end testing.

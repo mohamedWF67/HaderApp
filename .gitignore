@@ -1,5 +1,10 @@
-/.ideanode_modules/
+/.idea
+node_modules/
 .env
 .env.*
 !.env.example
 .vercel
+
+# Backend build files (services/registration)
+*.zip
+checks-result.json

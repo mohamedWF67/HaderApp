@@ -1,0 +1,24 @@
+{
+  "name": "registration-service",
+  "version": "1.0.0",
+  "description": "Workshop & Registration Service (Nourhan Ibrahim) - HaderApp, Group 40",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "zip": "node scripts/zip.js",
+    "lambda-env": "node scripts/lambda-env.js",
+    "checks": "node scripts/run-checks.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "jose": "^5.10.0",
+    "pg": "^8.16.0",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1"
+  }
+}

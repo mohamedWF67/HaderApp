@@ -22,7 +22,7 @@ export async function getWorkshop(workshopId, token) {
 // Brevo email (external API). A failed email never blocks the certificate.
 export async function sendEmail(toEmail, toName, cert) {
   if (!process.env.BREVO_API_KEY || !toEmail) return false;
-  const verifyUrl = `${process.env.FRONTEND_ORIGIN}/certificate/verify.html?code=${cert.verification_code}`;
+  const verifyUrl = `${(process.env.FRONTEND_ORIGIN || '').split(',')[0].trim()}/certificate/verify.html?code=${cert.verification_code}`;
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',

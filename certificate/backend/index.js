@@ -12,14 +12,21 @@ import * as db from './db.js';
 import { getAttendance, getWorkshop, sendEmail } from './services.js';
 import { makePdf } from './pdf.js';
 
-const ORIGIN = process.env.FRONTEND_ORIGIN; // your Vercel URL, never "*"
+const ALLOWED_ORIGINS = (process.env.FRONTEND_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
 
 // ---------- small helpers ----------
 const headers = {
-  'Access-Control-Allow-Origin': ORIGIN,
+  'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
   'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  Vary: 'Origin', // responses differ per origin, so caches must not mix them up
 };
+
+// Called at the start of every request (one request at a time per Lambda container).
+function setCorsOrigin(event) {
+  const origin = event.headers?.origin || event.headers?.Origin;
+  headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
 
 const reply = (status, body) => ({
   statusCode: status,
@@ -112,6 +119,7 @@ export async function handler(event) {
   const method = event.requestContext?.http?.method || event.httpMethod;
   const path = (event.rawPath || event.path || '').replace(/^.*(?=\/certificates)/, ''); // drop stage prefix
   const parts = path.split('/').filter(Boolean); // e.g. ["certificates", "verify", "abc"]
+  setCorsOrigin(event);
 
   try {
     if (method === 'OPTIONS') return { statusCode: 204, headers, body: '' };

@@ -22,7 +22,7 @@ export async function makePdf(cert) {
   center(cert.workshop_title.slice(0, 60), 22, 250, bold, blue);
   center(`Issued ${new Date(cert.issued_at).toDateString()}`, 12, 140);
   center(`Verification code: ${cert.verification_code}`, 12, 115);
-  center(`Verify at ${process.env.FRONTEND_ORIGIN}/certificate/verify.html`, 10, 95);
+  center(`Verify at ${(process.env.FRONTEND_ORIGIN || '').split(',')[0].trim()}/certificate/verify.html`, 10, 95);
 
   return doc.save();
 }

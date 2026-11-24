@@ -29,8 +29,13 @@ app.use((req, res, next) => {
 
 // Allow only your explicitly listed frontend origins to call the API in browsers.
 // No wildcard CORS for the authenticated organizer/attendee endpoints.
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3003')
-  .split(',').map(s => s.trim()).filter(Boolean);
+// Keep local testing available and allow the team's deployed Vercel frontend.
+// The Vercel address is the browser Origin, NOT the Attendance API endpoint.
+const allowedOrigins = new Set([
+  'http://localhost:3003',
+  'https://hader-app-five.vercel.app',
+  ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+]);
 app.use((req, res, next) => {
   const origin = req.get('Origin');
   if (origin && allowedOrigins.includes(origin)) {

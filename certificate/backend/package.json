@@ -1,0 +1,11 @@
+{
+  "name": "certificate-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "jose": "^5.9.6",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.12.0"
+  }
+}

@@ -5,3 +5,10 @@
 .vercel
 .idea
 package-lock.json
+**\node_modules
+
+certificate/backend/env.json
+certificate/backend/function.zip
+certificate/backend/event.json
+certificate/backend/out.json
+certificate/backend/api-url.txt

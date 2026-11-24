@@ -10,10 +10,16 @@ for (const key of required) {
   }
 }
 
+// Preserve any local developer origins and always include the deployed Hader site.
+const corsOrigins = new Set([
+  'http://localhost:3003',
+  'https://hader-app-five.vercel.app',
+  ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+]);
 const variables = {
   DATABASE_URL: process.env.DATABASE_URL,
   SUPABASE_URL: process.env.SUPABASE_URL || 'https://lydhdtlxodhyqjhvcfdu.supabase.co',
-  CORS_ORIGINS: process.env.CORS_ORIGINS || 'http://localhost:3003',
+  CORS_ORIGINS: [...corsOrigins].join(','),
   NODE_ENV: 'production'
 };
 process.stdout.write(JSON.stringify({ Variables: variables }));

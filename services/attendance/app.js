@@ -38,7 +38,7 @@ const allowedOrigins = new Set([
 ]);
 app.use((req, res, next) => {
   const origin = req.get('Origin');
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.has(origin)) {
     res.set('Access-Control-Allow-Origin', origin);
     res.set('Vary', 'Origin');
     res.set('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');

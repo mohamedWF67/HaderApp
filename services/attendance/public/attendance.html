@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hader | Attendance Dashboard</title>
+  <link rel="stylesheet" href="/attendance.css">
+  <script src="/attendance.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">ح</span><span>Hader <small>حاضر</small></span></div>
+    <span class="top-note">Attendance & Check-in Service</span>
+    <button id="logout" class="btn ghost" hidden>Log out</button>
+  </header>
+
+  <main class="page">
+    <div class="headline">
+      <span class="eyebrow">GROUP 40 · ATTENDANCE SERVICE</span>
+      <h1>Workshop attendance,<br><em>made simple.</em></h1>
+      <p>Manage sessions, check-in, and attendance summaries in one place.</p>
+    </div>
+
+    <section id="login-panel" class="card auth-card">
+      <h2>Sign in to Hader</h2>
+      <p class="muted">Use an existing Hader organizer or attendee account. This is your real Supabase login, not the database password.</p>
+      <form id="login-form">
+        <label>Email <input id="email" type="email" autocomplete="username" required placeholder="you@example.com"></label>
+        <label>Password <input id="password" type="password" autocomplete="current-password" required placeholder="Your Hader account password"></label>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      <p class="fineprint">No account yet? The dashboard is ready, but live features require a Hader test account later.</p>
+    </section>
+
+    <section id="workspace" hidden>
+      <div class="workspace-header">
+        <div>
+          <span id="role-label" class="pill">Signed in</span>
+          <h2>Your workshop workspace</h2>
+        </div>
+        <label class="workshop-select">Workshop
+          <select id="workshop-select"><option value="">Select a workshop</option></select>
+        </label>
+      </div>
+
+      <div id="organizer-tools" class="cards">
+        <section class="card">
+          <span class="step">01 · SESSION</span>
+          <h3>Create a session</h3>
+          <form id="create-session">
+            <label>Session title<input id="session-title" required minlength="3" maxlength="120" placeholder="Opening session"></label>
+            <label>Starts at<input id="session-start" type="datetime-local" required></label>
+            <label>Ends at<input id="session-end" type="datetime-local" required></label>
+            <button class="btn primary" type="submit">Create session</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <span class="step">02 · CHECK-IN</span>
+          <h3>Open or close check-in</h3>
+          <label>Session<select id="checkin-session"></select></label>
+          <div class="button-row">
+            <button id="open-checkin" class="btn primary" type="button">Open</button>
+            <button id="close-checkin" class="btn secondary" type="button">Close</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <span class="step">03 · ATTENDANCE</span>
+          <h3>Mark attendee present</h3>
+          <label>Session<select id="attendance-session"></select></label>
+          <label>Registered attendee<select id="registration-select"></select></label>
+          <button id="mark-attendance" class="btn primary" type="button">Mark present</button>
+        </section>
+      </div>
+
+      <section class="card wide">
+        <div class="section-heading">
+          <div>
+            <span class="step">OVERVIEW</span>
+            <h3>Workshop sessions</h3>
+          </div>
+          <button id="refresh-sessions" class="btn secondary" type="button">Refresh</button>
+        </div>
+        <div id="sessions-list" class="list-empty">Choose a workshop to view sessions.</div>
+      </section>
+
+      <section id="summary-panel" class="card wide">
+        <div class="section-heading">
+          <div>
+            <span class="step">04 · SUMMARY</span>
+            <h3>Attendance summary</h3>
+          </div>
+          <button id="load-summary" class="btn secondary" type="button">View summary</button>
+        </div>
+        <div id="summary-list" class="list-empty">Choose a workshop and select View summary.</div>
+      </section>
+    </section>
+
+    <p id="message" role="status" aria-live="polite"></p>
+  </main>
+  <footer>Hader Attendance Service · Local demo · Supabase Auth + PostgreSQL</footer>
+</body>
+</html>

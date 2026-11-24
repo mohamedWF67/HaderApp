@@ -1,0 +1,22 @@
+{
+  "name": "hader-attendance-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hader Attendance and Check-in microservice",
+  "main": "app.js",
+  "scripts": {
+    "start": "node demo-server.js",
+    "build": "node scripts/build-lambda.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jose": "^6.1.0",
+    "pg": "^8.16.3",
+    "serverless-http": "^4.0.0"
+  },
+  "devDependencies": {
+    "archiver": "^8.0.0"
+  }
+}

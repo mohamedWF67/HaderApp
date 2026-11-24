@@ -1,0 +1,15 @@
+# Floci AWS emulator for Attendance Service. Requires Docker Desktop on Windows.
+# Start: docker compose -f infra/docker-compose.floci.yml up -d
+# Check: docker compose -f infra/docker-compose.floci.yml ps
+services:
+  floci:
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - attendance_floci_data:/app/data
+    environment:
+      FLOCI_HOSTNAME: floci
+volumes:
+  attendance_floci_data:

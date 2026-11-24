@@ -1,6 +1,7 @@
 // Workshops page.
 // Attendees: see workshops, register, or join the waiting list of a full workshop.
-// Organizers: create, edit and delete their workshops, and see who registered.
+// Organizers: create, edit and delete their workshops, set a registration deadline,
+// see who registered and remove an attendee.
 // (Hidden buttons are only for convenience: the backend checks every role and owner itself.)
 
 const API = CONFIG.REGISTRATION_API;
@@ -32,6 +33,10 @@ function seatCount(w) {
   return text;
 }
 
+function registrationClosed(w) {
+  return Boolean(w.registrationDeadline) && new Date(w.registrationDeadline) <= new Date();
+}
+
 function positionText(n) {
   return n === 1 ? 'You are next in line' : `You are number ${n} in line`;
 }
@@ -43,6 +48,10 @@ function workshopRow(w) {
   const info = el('div');
   info.append(el('h3', {}, w.title), el('p', { className: 'host' }, `Hosted by ${w.organizerName || 'an organizer'}`));
   if (w.description) info.append(el('p', { className: 'desc' }, w.description));
+  if (w.registrationDeadline) {
+    info.append(el('p', { className: registrationClosed(w) ? 'deadline closed' : 'deadline' },
+      registrationClosed(w) ? 'Registration closed' : `Registration closes ${formatDate(w.registrationDeadline)}`));
+  }
 
   const side = el('div', { className: 'side' });
   side.append(seatStrip(w.totalSeats, w.seatsLeft), el('span', { className: 'seat-count' }, seatCount(w)));
@@ -60,6 +69,10 @@ function workshopRow(w) {
       const leave = el('button', { className: 'secondary' }, 'Leave queue');
       leave.addEventListener('click', () => leaveQueue(w, queued, leave));
       buttons.append(leave);
+    } else if (registrationClosed(w)) {
+      const closed = el('button', {}, 'Registration closed');
+      closed.disabled = true;
+      buttons.append(closed);
     } else if (w.seatsLeft === 0) {
       const join = el('button', { className: 'secondary' }, 'Join waiting list');
       join.addEventListener('click', () => joinQueue(w, join));
@@ -176,6 +189,7 @@ function startEdit(w) {
   document.getElementById('description').value = w.description;
   document.getElementById('date').value = toInputDate(w.date);
   document.getElementById('seats').value = w.totalSeats;
+  document.getElementById('deadline').value = w.registrationDeadline ? toInputDate(w.registrationDeadline) : '';
   formTitle.textContent = `Editing: ${w.title}`;
   saveButton.textContent = 'Save changes';
   cancelEdit.hidden = false;
@@ -188,7 +202,10 @@ form.addEventListener('submit', async (e) => {
     title: document.getElementById('title').value.trim(),
     description: document.getElementById('description').value.trim(),
     date: new Date(document.getElementById('date').value).toISOString(),
-    totalSeats: Number(document.getElementById('seats').value)
+    totalSeats: Number(document.getElementById('seats').value),
+    // Empty = no deadline (open until the workshop starts)
+    registrationDeadline: document.getElementById('deadline').value
+      ? new Date(document.getElementById('deadline').value).toISOString() : ''
   };
   saveButton.disabled = true;
   try {
@@ -222,11 +239,15 @@ async function showAttendees(w) {
     } else {
       const table = el('table');
       const head = el('tr');
-      head.append(el('th', {}, 'Name'), el('th', {}, 'Email'), el('th', {}, 'Registered on'));
+      head.append(el('th', {}, 'Name'), el('th', {}, 'Email'), el('th', {}, 'Registered on'), el('th', {}, ''));
       table.append(head);
       for (const p of people) {
         const row = el('tr');
-        row.append(el('td', {}, p.name || '-'), el('td', {}, p.email), el('td', {}, formatDate(p.registeredAt)));
+        const remove = el('button', { className: 'danger small' }, 'Remove');
+        remove.addEventListener('click', () => removeAttendee(w, p, remove));
+        const action = el('td');
+        action.append(remove);
+        row.append(el('td', {}, p.name || '-'), el('td', {}, p.email), el('td', {}, formatDate(p.registeredAt)), action);
         table.append(row);
       }
       box.replaceChildren(table);
@@ -235,6 +256,27 @@ async function showAttendees(w) {
     box.replaceChildren(el('p', { className: 'message error' }, err.message));
   }
   attendeesPanel.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Organizers: remove one attendee from their workshop. The seat goes to the
+// first person in the waiting list automatically (done by the backend).
+async function removeAttendee(w, person, btn) {
+  const who = person.name || person.email;
+  if (!window.confirm(`Remove ${who} from "${w.title}"? They will lose their seat.`)) return;
+  btn.disabled = true;
+  try {
+    const result = await api(API, `/workshops/${w.workshopId}/registrations/${person.registrationId}`, { method: 'DELETE' });
+    showMessage(message, result.seatGivenToWaitlist
+      ? `${who} was removed. Their seat went to the next person in the waiting list.`
+      : `${who} was removed. Their seat is free again.`, 'success');
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+    btn.disabled = false;
+    return;
+  }
+  await loadWorkshops();
+  const fresh = (await api(API, '/workshops')).find(x => x.workshopId === w.workshopId);
+  if (fresh) await showAttendees(fresh);
 }
 
 document.getElementById('close-attendees').addEventListener('click', () => { attendeesPanel.hidden = true; });

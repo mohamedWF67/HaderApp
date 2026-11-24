@@ -15,11 +15,22 @@ npm run dev                 # http://localhost:3001
 Run in the Supabase SQL Editor, in order: `db/schema.sql` (new database), or for an existing one
 `db/002_waitlist.sql`, `db/003_registration_deadline.sql`, `db/004_notifications.sql`, `db/005_rate_limits.sql`.
 
-## Deploy to Floci (from the ROOT of this repo, in Git Bash)
+## Deploy to Floci
+Needs Docker Desktop (running), the AWS CLI and Node.js, plus `services/registration/.env`.
+Run from the ROOT of this repo. Both scripts do the same thing; pick one.
+
+**Windows PowerShell** (easiest for teammates: no AWS profile needed, starts Floci if it is stopped):
+```
+powershell -ExecutionPolicy Bypass -File services\registration\infra\deploy-registration.ps1
+```
+
+**Git Bash** (uses the `floci` AWS profile from the labs):
 ```
 export AWS_PROFILE=floci
 bash services/registration/infra/deploy-registration.sh
 ```
+At the end it prints the API address: put it in `shared/config.js` as `REGISTRATION_API`.
+A brand-new Floci starts empty, so its API address is different from yours.
 Creates: IAM role (logs only) -> 2 Lambda functions (`hader-registration-api`, `hader-registration-checks`)
 -> API Gateway HTTP API (routes + throttling) -> EventBridge Scheduler (checks every minute, own IAM role).
 

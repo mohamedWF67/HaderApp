@@ -97,6 +97,9 @@ async function loadNav() {
   if (me.role === 'attendee') {
     links.push(el('a', { href: appUrl('registration/my-registrations.html') }, 'My seats'));
   }
+  if (me.role === 'organizer') {
+    links.push(el('a', { href: appUrl('attendance/attendance.html') }, 'Attendance'));
+  }
   for (const a of links.slice(1)) {
     if (new URL(a.href).pathname === window.location.pathname) a.setAttribute('aria-current', 'page');
   }

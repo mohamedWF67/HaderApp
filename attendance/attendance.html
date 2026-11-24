@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hader - Attendance &amp; Check-in</title>
+  <link rel="stylesheet" href="../shared/style.css">
+  <link rel="stylesheet" href="attendance.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <main>
+    <h1>Attendance &amp; Check-in</h1>
+    <p class="lead">Create workshop sessions, manage check-in and review attendance.</p>
+    <p id="message" class="message" hidden></p>
+
+    <section class="panel">
+      <div class="attendance-heading">
+        <div>
+          <h2>Workshop</h2>
+          <p class="attendance-help">Only workshops you own or have registered for are shown.</p>
+        </div>
+        <button class="secondary" id="refresh" type="button">Refresh</button>
+      </div>
+      <label for="workshop">Select workshop</label>
+      <select id="workshop"><option value="">Loading workshops...</option></select>
+    </section>
+
+    <div id="organizer-tools" hidden>
+      <section class="panel">
+        <h2>Create a session</h2>
+        <form id="create-session">
+          <label for="session-title">Session title</label>
+          <input id="session-title" type="text" required minlength="2" maxlength="120">
+          <div class="attendance-grid">
+            <div>
+              <label for="session-start">Start</label>
+              <input id="session-start" type="datetime-local" required>
+            </div>
+            <div>
+              <label for="session-end">End</label>
+              <input id="session-end" type="datetime-local" required>
+            </div>
+          </div>
+          <button type="submit">Create session</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Open or close check-in</h2>
+        <label for="checkin-session">Session</label>
+        <select id="checkin-session"></select>
+        <div class="form-actions">
+          <button type="button" id="open-checkin">Open check-in</button>
+          <button type="button" id="close-checkin" class="secondary">Close check-in</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Mark attendance</h2>
+        <label for="attendance-session">Session</label>
+        <select id="attendance-session"></select>
+        <label for="registration">Registered attendee</label>
+        <select id="registration"></select>
+        <div class="form-actions"><button type="button" id="mark-present">Mark present</button></div>
+      </section>
+
+      <section class="panel">
+        <div class="attendance-heading">
+          <h2>Attendance summary</h2>
+          <button type="button" id="view-summary" class="secondary">View summary</button>
+        </div>
+        <div id="summary" class="attendance-help">Select View summary to load results.</div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Workshop sessions</h2>
+      <div id="sessions" class="attendance-help">Select a workshop to see its sessions.</div>
+    </section>
+  </main>
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="attendance-config.js"></script>
+  <script src="attendance.js"></script>
+</body>
+</html>

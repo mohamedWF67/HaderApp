@@ -1,4 +1,5 @@
-/.ideanode_modules/
+/.idea
+node_modules/
 .env
 .env.*
 !.env.example

@@ -203,3 +203,7 @@ td { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); }
   * { scroll-behavior: auto !important; }
 }
 .workshop h3, .workshop .desc, td { overflow-wrap: anywhere; }
+
+/* Waiting list */
+.queue-note { font-family: var(--display); font-weight: 600; color: #8A6300; }
+.section-title { margin-top: 3rem; }

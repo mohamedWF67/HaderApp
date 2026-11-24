@@ -97,6 +97,9 @@ async function loadNav() {
   if (me.role === 'attendee') {
     links.push(el('a', { href: appUrl('registration/my-registrations.html') }, 'My seats'));
   }
+  if (me.role === 'organizer') {
+    links.push(el('a', { href: appUrl('attendance/attendance.html') }, 'Attendance'));
+  }
   // Notifications link with the number of unread messages. If it cannot load,
   // the page still works: the link is shown without a number.
   const bell = el('a', { href: appUrl('registration/notifications.html'), className: 'bell' }, 'Notifications');

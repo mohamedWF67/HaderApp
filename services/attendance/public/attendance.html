@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hader - Attendance &amp; Check-in</title>
+  <!-- Same shared stylesheet used by the team's Registration pages. -->
+  <link rel="stylesheet" href="/hader-shared.css">
+  <link rel="stylesheet" href="/attendance.css">
+  <script src="/attendance.js" defer></script>
+</head>
+<body>
+  <header id="nav">
+    <a class="brand" href="/">Hader <span lang="ar">حاضر</span></a>
+    <span class="attendance-nav-label">Attendance</span>
+    <span class="nav-right">
+      <button id="logout" type="button" class="link" hidden>Log out</button>
+    </span>
+  </header>
+  <main>
+    <h1>Attendance &amp; Check-in</h1>
+    <p class="lead">Create workshop sessions, open check-in, mark attendees present and view summaries.</p>
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+
+    <section id="login-panel" class="panel attendance-login">
+      <h2>Log in</h2>
+      <p class="attendance-help">Use your existing Hader account. Don't enter your PostgreSQL password.</p>
+      <form id="login-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required placeholder="you@example.com">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required placeholder="Your Hader account password">
+        <div class="form-actions"><button type="submit">Log in</button></div>
+      </form>
+    </section>
+
+    <section id="workspace" hidden>
+      <section class="panel">
+        <div class="attendance-heading">
+          <div>
+            <h2>Choose a workshop</h2>
+            <p class="attendance-help">Only workshops you own or have registered for are shown.</p>
+          </div>
+          <button class="secondary" id="refresh-sessions" type="button">Refresh</button>
+        </div>
+        <label for="workshop-select">Workshop</label>
+        <select id="workshop-select"><option value="">Select a workshop</option></select>
+        <p id="role-label" class="attendance-role">Signed in</p>
+      </section>
+
+      <div id="organizer-tools" class="attendance-controls">
+        <section class="panel">
+          <h2>New session</h2>
+          <p class="attendance-help">Create a session for your workshop.</p>
+          <form id="create-session">
+            <label for="session-title">Session title</label>
+            <input id="session-title" type="text" minlength="3" maxlength="120" required placeholder="Introduction to Cloud Security">
+            <div class="row">
+              <div>
+                <label for="session-start">Start date and time</label>
+                <input id="session-start" type="datetime-local" required>
+              </div>
+              <div>
+                <label for="session-end">End date and time</label>
+                <input id="session-end" type="datetime-local" required>
+              </div>
+            </div>
+            <div class="form-actions"><button type="submit">Create session</button></div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Session check-in</h2>
+          <p class="attendance-help">Only an open session can record attendance.</p>
+          <label for="checkin-session">Session</label>
+          <select id="checkin-session"></select>
+          <div class="form-actions">
+            <button type="button" id="open-checkin">Open check-in</button>
+            <button type="button" id="close-checkin" class="secondary">Close check-in</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Mark attendee present</h2>
+          <p class="attendance-help">A registered attendee can be checked in once per session.</p>
+          <label for="attendance-session">Session</label>
+          <select id="attendance-session"></select>
+          <label for="registration-select">Registered attendee</label>
+          <select id="registration-select"></select>
+          <div class="form-actions"><button id="mark-attendance" type="button">Mark present</button></div>
+        </section>
+      </div>
+
+      <h2>Workshop sessions</h2>
+      <section id="sessions-list" class="attendance-list">Choose a workshop to view sessions.</section>
+
+      <section id="summary-panel" class="panel attendance-summary">
+        <div class="attendance-heading">
+          <h2>Attendance summary</h2>
+          <button id="load-summary" class="secondary" type="button">View summary</button>
+        </div>
+        <div id="summary-list" class="attendance-help">Select View summary to load attendance.</div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,28 @@
+/* Attendance additions on top of the exact shared HaderApp theme. */
+.attendance-heading { display:flex; gap:1rem; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.attendance-heading h2 { margin:0; }
+.attendance-heading button { flex-shrink:0; }
+.attendance-help { color:var(--ink-soft); margin:0.25rem 0 1rem; }
+#organizer-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:2.5rem; }
+#organizer-tools > .panel { margin-bottom:0; min-width:0; }
+#organizer-tools > .panel:first-child { grid-column:1 / -1; }
+select {
+  display:block; width:100%; min-width:0; padding:0.7rem 0.8rem; margin:0.3rem 0 0.75rem;
+  font:inherit; color:var(--ink); background:var(--paper);
+  border:1px solid var(--line); border-bottom:2px solid var(--ink); border-radius:2px;
+}
+select:focus { outline:none; border-bottom-color:var(--cobalt); background:#fff; }
+#organizer-summary { margin-top:2rem; }
+.attendance-session .side { justify-items:start; }
+.attendance-status { font-size:0.92rem; font-weight:700; border-radius:2px; }
+.attendance-status.open { color:var(--green); }
+.attendance-status.closed { color:var(--ink-soft); }
+.attendance-meta { color:var(--ink-soft); font-size:0.92rem; margin:0.35rem 0 0; }
+.attendance-summary-row { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:0.65rem 0; border-bottom:1px solid var(--line); }
+.attendance-summary-row:last-child { border-bottom:0; }
+.attendance-summary-row strong { font-weight:600; }
+@media (max-width:760px) {
+  #organizer-tools { grid-template-columns:1fr; }
+  #organizer-tools > .panel:first-child { grid-column:auto; }
+  .attendance-heading { align-items:flex-start; }
+}

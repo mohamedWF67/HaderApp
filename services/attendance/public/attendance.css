@@ -1,0 +1,42 @@
+/* Attendance standalone demo using the *same* theme as Registration. */
+/* Design tokens, navigation, buttons, form fields and panels come from hader-shared.css. */
+.attendance-nav-label { color:var(--ink-soft); font-weight:500; }
+.attendance-login { max-width:560px; }
+.attendance-help { color:var(--ink-soft); margin:0.25rem 0 1rem; }
+.attendance-role { color:var(--ink-soft); margin:0.7rem 0 0; font-size:0.9rem; font-weight:600; }
+.attendance-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+.attendance-heading h2 { margin:0; }
+.attendance-heading button { flex-shrink:0; }
+.attendance-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:2.5rem; }
+.attendance-controls > .panel { margin:0; min-width:0; }
+.attendance-controls > .panel:first-child { grid-column:1/-1; }
+select {
+  width:100%; display:block; min-width:0; margin:0.3rem 0 0.75rem;
+  padding:0.7rem 0.8rem; font:inherit; color:var(--ink);
+  background:var(--paper); border:1px solid var(--line);
+  border-bottom:2px solid var(--ink); border-radius:2px;
+}
+select:focus { outline:none; border-bottom-color:var(--cobalt); background:white; }
+.attendance-list { display:grid; gap:0.75rem; margin:0 0 2rem; }
+.session-row {
+  background:var(--surface);
+  border:1px solid var(--line); border-left:6px solid var(--cobalt);
+  border-radius:4px; padding:1.25rem 1.5rem;
+  display:flex; justify-content:space-between; align-items:center; gap:1rem;
+}
+.session-row strong { font-family:var(--display); font-size:1.25rem; font-weight:600; }
+.details { color:var(--ink-soft); font-size:0.93rem; margin-top:0.35rem; }
+.status-open { color:var(--green); font-weight:700; white-space:nowrap; }
+.status-closed { color:var(--ink-soft); font-weight:700; white-space:nowrap; }
+.attendance-summary { margin-top:2rem; }
+.summary-row { display:flex; justify-content:space-between; align-items:center; padding:0.7rem 0; border-bottom:1px solid var(--line); gap:1rem; }
+.summary-row:last-child { border-bottom:0; }
+.summary-row span:last-child { font-weight:700; color:var(--cobalt); white-space:nowrap; }
+#message:empty { display:none; }
+#message.error { border-color:var(--red); color:#8E241C; }
+@media(max-width:760px) {
+  .attendance-controls { grid-template-columns:1fr; }
+  .attendance-controls > .panel:first-child { grid-column:auto; }
+  .attendance-heading { align-items:flex-start; }
+  .session-row { align-items:flex-start; }
+}

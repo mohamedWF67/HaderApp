@@ -1,8 +1,12 @@
+.idea/
 /.idea
 node_modules/
 .env
 .env.*
 !.env.example
+.vercel/
+dist/
+*.zip
 .vercel
 
 # Backend build files (services/registration)

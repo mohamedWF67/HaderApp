@@ -144,6 +144,7 @@ try {
     'PATCH /workshops/{workshopId}/sessions/{sessionId}/checkin',
     'POST /workshops/{workshopId}/sessions/{sessionId}/attendance',
     'GET /workshops/{workshopId}/attendance/summary',
+    'GET /workshops/{workshopId}/attendance/{attendeeId}',
     'OPTIONS /{proxy+}'
   )
   foreach ($routeKey in $wanted) {

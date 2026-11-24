@@ -1,4 +1,5 @@
 .idea/
+/.idea
 node_modules/
 .env
 .env.*
@@ -6,3 +7,8 @@ node_modules/
 .vercel/
 dist/
 *.zip
+.vercel
+
+# Backend build files (services/registration)
+*.zip
+checks-result.json

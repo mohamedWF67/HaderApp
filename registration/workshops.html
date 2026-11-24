@@ -32,6 +32,9 @@
             <input id="seats" type="number" required min="1" max="1000">
           </div>
         </div>
+        <label for="deadline">Registration closes <small>(optional)</small></label>
+        <input id="deadline" type="datetime-local">
+        <small>Leave empty to keep registration open until the workshop starts. Set a time that has passed to close it now.</small>
         <div class="form-actions">
           <button type="submit" id="save-button">Create workshop</button>
           <button type="button" id="cancel-edit" class="secondary" hidden>Cancel editing</button>

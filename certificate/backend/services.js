@@ -1,3 +1,5 @@
+import { verifyUrl } from './pdf.js';
+
 // Calls to the other two services (through their APIs, never their tables) and to Brevo.
 
 const get = async (url, token) => {
@@ -56,11 +58,11 @@ async function sendBrevo(kind, certificateId, toEmail, toName, subject, textCont
 
 // Certificate issued -> tell the attendee, with the public verification link.
 export function sendEmail(toEmail, toName, cert) {
-  const verifyUrl = `${frontendUrl()}/certificate/verify.html?code=${cert.verification_code}`;
+  const url = verifyUrl(cert.verification_code); // same link as on the PDF and its QR code
   return sendBrevo('issued', cert.certificate_id, toEmail, toName,
     'Your workshop certificate is ready',
     `Hello ${toName},\n\nYour certificate for "${cert.workshop_title}" is ready. ` +
-    `Log in to download it.\n\nAnyone can verify it here: ${verifyUrl}`);
+    `Log in to download it.\n\nAnyone can verify it here: ${url}`);
 }
 
 // Certificate revoked by the workshop's organizer -> tell the attendee why.

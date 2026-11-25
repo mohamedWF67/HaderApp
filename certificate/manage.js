@@ -86,14 +86,24 @@ function showRevokeForm(c, w, cell, body, btn) {
   input.focus();
 }
 
+// The navbar's "Certificates" link points to My certificates; on this page point it here instead
+// (organizers who click it are redirected here anyway) and mark it as the current page.
+function markCertificatesLink() {
+  const link = [...document.querySelectorAll('#nav a')].find((a) => a.textContent.trim() === 'Certificates');
+  if (!link) return;
+  link.href = appUrl('certificate/manage.html');
+  link.setAttribute('aria-current', 'page');
+}
+
 (async function start() {
   if (!requireLoginPage()) return;
   await loadNav().catch(() => null);
+  markCertificatesLink();
   try {
     const me = await api(CONFIG.REGISTRATION_API, '/me');
     if (me.role !== 'organizer') {
-      showMessage(message, 'Only organizers can manage certificates. Your own certificates are on the Certificates page.', 'info');
-      workshopList.replaceChildren(el('a', { href: appUrl('certificate/certificates.html') }, 'Go to my certificates'));
+      // Attendees have their own certificates page
+      window.location.replace(appUrl('certificate/certificates.html'));
       return;
     }
     const all = await api(CONFIG.REGISTRATION_API, '/workshops');

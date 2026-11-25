@@ -1,11 +1,10 @@
-// On "My certificates": organizers get a link to the Manage certificates page.
-// Kept in its own file so certificates.js stays the same for attendees.
-(async function organizerLink() {
+// "Certificates" is one navbar link for everyone, but the pages differ by role:
+// attendees get My certificates (this page), organizers get Manage certificates.
+// Loaded before certificates.js so organizers are sent on as early as possible.
+// (Only which page to show - the backend still enforces every role check.)
+(async function sendOrganizersToManage() {
   try {
     const me = await api(CONFIG.REGISTRATION_API, '/me');
-    if (me.role !== 'organizer') return;
-    const p = document.getElementById('organizer-link');
-    p.replaceChildren(el('a', { href: appUrl('certificate/manage.html') }, 'Manage the certificates of your workshops (revoke)'));
-    p.hidden = false;
-  } catch (e) { /* no link if the Registration API cannot be reached */ }
+    if (me.role === 'organizer') window.location.replace(appUrl('certificate/manage.html'));
+  } catch (e) { /* Registration API unreachable: stay here, certificates.js shows the message */ }
 })();

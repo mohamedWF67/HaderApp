@@ -1,8 +1,23 @@
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
+
+// TLS to Supabase (proposal 6.2: "Lambda connects to it only over TLS").
+// certs/prod-ca-2021.crt is Supabase's public root certificate (not a secret). With it the
+// connection is encrypted AND the server's identity is checked, so a fake server cannot
+// pretend to be Supabase. The same file is used by the Registration and Attendance services.
+function sslOptions() {
+  try {
+    const ca = readFileSync(new URL('./certs/prod-ca-2021.crt', import.meta.url), 'utf8');
+    return { ca, rejectUnauthorized: true };
+  } catch {
+    console.log(JSON.stringify({ event: 'db_tls_unverified', reason: 'CA file missing from the package' }));
+    return { rejectUnauthorized: false }; // still encrypted, but the server is not verified
+  }
+}
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: sslOptions(),
   max: 1,
 });
 

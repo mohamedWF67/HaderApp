@@ -38,7 +38,7 @@ function Fail($text) { Write-Host "   $text" -ForegroundColor Red; Pop-Location;
 Step "Checking Floci and files"
 Floci sts get-caller-identity --query Account --output text | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail "Cannot reach Floci at $Endpoint - is it running?" }
-foreach ($f in "env.json", "infra\trust-policy.json", "infra\policy.json", "index.js", "auth.js", "db.js", "services.js", "pdf.js", "package.json") {
+foreach ($f in "env.json", "infra\trust-policy.json", "infra\policy.json", "index.js", "auth.js", "db.js", "services.js", "pdf.js", "package.json", "certs\prod-ca-2021.crt") {
   if (-not (Test-Path $f)) { Fail "Missing file: $f" }
 }
 Ok "Floci is up, files found"
@@ -71,7 +71,7 @@ if (-not (Test-Path "node_modules\jose")) {
   if (-not (Test-Path "node_modules\jose")) { Fail "npm install failed" }
 }
 Remove-Item function.zip -ErrorAction SilentlyContinue
-& tar -a -c -f function.zip index.js auth.js db.js services.js pdf.js package.json node_modules
+& tar -a -c -f function.zip index.js auth.js db.js services.js pdf.js package.json certs node_modules
 if (-not (Test-Path function.zip)) { Fail "could not create function.zip" }
 Ok ("function.zip built ({0:N1} MB)" -f ((Get-Item function.zip).Length / 1MB))
 

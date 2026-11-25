@@ -21,8 +21,9 @@ const key = process.env.SUPABASE_JWT_SECRET
 
 export class AuthError extends Error {}
 
-export async function getUser(event) {
-  const header = event.headers?.authorization || event.headers?.Authorization || '';
+// req = the Express request (headers are lower-case there)
+export async function getUser(req) {
+  const header = req.headers?.authorization || '';
   const token = header.replace(/^Bearer /, '');
   if (!token) {
     console.log(JSON.stringify({ event: 'auth_missing' }));

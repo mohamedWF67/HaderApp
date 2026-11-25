@@ -3,7 +3,7 @@
     1. IAM role + least-privilege policy
     2. CloudWatch log groups (14-day retention)
     3. Lambda function (zips the code, uploads it, sets env.json)
-    4. REST API "workshop-api" with the 5 certificate routes (+ OPTIONS), deployed to "prod"
+    4. REST API "workshop-api" with the 7 certificate routes (+ OPTIONS), deployed to "prod"
     5. Stage throttling + access logs
     6. CloudWatch metric filters + alarms
 
@@ -38,7 +38,7 @@ function Fail($text) { Write-Host "   $text" -ForegroundColor Red; Pop-Location;
 Step "Checking Floci and files"
 Floci sts get-caller-identity --query Account --output text | Out-Null
 if ($LASTEXITCODE -ne 0) { Fail "Cannot reach Floci at $Endpoint - is it running?" }
-foreach ($f in "env.json", "infra\trust-policy.json", "infra\policy.json", "index.js", "auth.js", "db.js", "services.js", "pdf.js", "package.json", "certs\prod-ca-2021.crt") {
+foreach ($f in "env.json", "infra\trust-policy.json", "infra\policy.json", "index.js", "app.js", "auth.js", "db.js", "services.js", "pdf.js", "package.json", "certs\prod-ca-2021.crt") {
   if (-not (Test-Path $f)) { Fail "Missing file: $f" }
 }
 Ok "Floci is up, files found"
@@ -65,30 +65,56 @@ foreach ($lg in $LambdaLG, $ApiLG) {
 
 # ---------------------------------------------------------------- 3. Lambda
 Step "Lambda $FunctionName"
-if (-not (Test-Path "node_modules\jose")) {
+if (-not (Test-Path "node_modules\serverless-http")) {
   Write-Host "   installing npm packages..." -ForegroundColor DarkGray
   & npm install --omit=dev --no-audit --no-fund | Out-Null
-  if (-not (Test-Path "node_modules\jose")) { Fail "npm install failed" }
+  if (-not (Test-Path "node_modules\serverless-http")) { Fail "npm install failed" }
+}
+# Build the zip from a clean copy, leaving out parts of packages Lambda never loads
+# (pdf-lib ships browser bundles + sources; Node only uses its cjs folder) -> much smaller upload.
+$Build = Join-Path $env:TEMP "certificate-build"
+Remove-Item $Build -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory $Build | Out-Null
+Copy-Item index.js, app.js, auth.js, db.js, services.js, pdf.js, package.json $Build
+Copy-Item certs, node_modules $Build -Recurse
+foreach ($d in "pdf-lib\dist", "pdf-lib\es", "pdf-lib\src", "pdf-lib\ts3.4", "@pdf-lib\standard-fonts\dist", "@pdf-lib\upng\dist") {
+  Remove-Item (Join-Path $Build "node_modules\$d") -Recurse -Force -ErrorAction SilentlyContinue
 }
 Remove-Item function.zip -ErrorAction SilentlyContinue
-& tar -a -c -f function.zip index.js auth.js db.js services.js pdf.js package.json certs node_modules
+& tar -a -c -f function.zip -C $Build index.js app.js auth.js db.js services.js pdf.js package.json certs node_modules
+Remove-Item $Build -Recurse -Force -ErrorAction SilentlyContinue
 if (-not (Test-Path function.zip)) { Fail "could not create function.zip" }
 Ok ("function.zip built ({0:N1} MB)" -f ((Get-Item function.zip).Length / 1MB))
+
+# Floci restarts the function's container on every code change, which can take longer than the
+# AWS CLI's default 60 s read timeout. Wait longer, then confirm the update really finished.
+function Wait-Function {
+  for ($i = 0; $i -lt 40; $i++) {
+    $status = Floci lambda get-function-configuration --function-name $FunctionName --query "LastUpdateStatus" --output text 2>$null
+    if ($LASTEXITCODE -eq 0 -and $status -in @("Successful", "None", "null", "")) { return $true }
+    if ($status -eq "Failed") { return $false }
+    Start-Sleep -Seconds 3
+  }
+  return $false
+}
 
 Floci lambda get-function --function-name $FunctionName 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
   Floci lambda create-function --function-name $FunctionName --runtime nodejs20.x --handler index.handler `
     --role $RoleArn --zip-file fileb://function.zip --timeout 10 --memory-size 256 `
-    --environment file://env.json | Out-Null
-  if ($LASTEXITCODE -ne 0) { Fail "create-function failed" }
+    --environment file://env.json --cli-read-timeout 300 | Out-Null
+  if ($LASTEXITCODE -ne 0 -and -not (Wait-Function)) { Fail "create-function failed" }
   Ok "function created"
 } else {
-  Floci lambda update-function-code --function-name $FunctionName --zip-file fileb://function.zip | Out-Null
-  Start-Sleep -Seconds 3
+  Floci lambda update-function-code --function-name $FunctionName --zip-file fileb://function.zip --cli-read-timeout 300 | Out-Null
+  if ($LASTEXITCODE -ne 0) { Write-Host "   upload slow to answer - checking whether it finished..." -ForegroundColor DarkYellow }
+  if (-not (Wait-Function)) { Fail "update-function-code did not finish" }
+  Ok "function code updated"
   Floci lambda update-function-configuration --function-name $FunctionName --role $RoleArn `
-    --environment file://env.json --timeout 10 --memory-size 256 | Out-Null
-  if ($LASTEXITCODE -ne 0) { Fail "update-function failed" }
-  Ok "function code + settings updated"
+    --environment file://env.json --timeout 10 --memory-size 256 --cli-read-timeout 300 | Out-Null
+  if ($LASTEXITCODE -ne 0 -and -not (Wait-Function)) { Fail "update-function-configuration failed" }
+  if (-not (Wait-Function)) { Fail "settings update did not finish" }
+  Ok "function settings updated (env.json, role, timeout)"
 }
 
 # Cap how far the function can scale during a flood: limits cost and Supabase connections (threat 6)
@@ -137,13 +163,18 @@ $id     = Ensure-Res "/certificates" "{id}"
 $elig   = Ensure-Res "/certificates/eligibility" "{workshopId}"
 [void](Ensure-Res "/certificates" "verify")
 $verify = Ensure-Res "/certificates/verify" "{code}"
+$revoke = Ensure-Res "/certificates/{id}" "revoke"
+[void](Ensure-Res "/certificates" "workshop")
+$wsList = Ensure-Res "/certificates/workshop" "{workshopId}"
 
 $routes = @(
   @($certs,  "/certificates",                          "POST"),
   @($me,     "/certificates/me",                       "GET"),
   @($id,     "/certificates/{id}",                     "GET"),
   @($elig,   "/certificates/eligibility/{workshopId}", "GET"),
-  @($verify, "/certificates/verify/{code}",            "GET")
+  @($verify, "/certificates/verify/{code}",            "GET"),
+  @($revoke, "/certificates/{id}/revoke",              "PATCH"),   # organizer of the workshop
+  @($wsList, "/certificates/workshop/{workshopId}",    "GET")      # organizer of the workshop
 )
 foreach ($r in $routes) {
   Ensure-Method $r[0] $r[1] $r[2]
@@ -183,7 +214,10 @@ $filters = @(
   @("CertificateAccessDenied", '{ $.event = "certificate_access_denied" }', 5,  "5+ attempts to open other users' certificates in 5 min (threat 3)"),
   @("CertificateRoleDenied",   '{ $.event = "role_denied" }',               10, "10+ wrong-role requests in 5 min (threat 2)"),
   @("CertificateVerifyFailed", '{ $.event = "certificate_verify_failed" }', 20, "20+ failed verifications in 5 min - code guessing? (threat 4)"),
-  @("CertificateAuthFailed",   '{ $.event = "auth_failed" }',               20, "20+ invalid logins in 5 min (threat 2)")
+  @("CertificateAuthFailed",   '{ $.event = "auth_failed" }',               20, "20+ invalid logins in 5 min (threat 2)"),
+  @("CertificateRateLimited",  '{ $.event = "rate_limited" }',              20, "20+ requests refused by the rate limiter in 5 min - flood or code guessing (threats 4, 6)"),
+  @("OrganizerAccessDenied",   '{ $.event = "organizer_access_denied" }',   5,  "5+ organizer requests on workshops they do not own in 5 min (threat 3)"),
+  @("CertificateRevoked",      '{ $.event = "certificate_revoked" }',       10, "10+ certificates revoked in 5 min - misuse of an organizer account?")
 )
 foreach ($f in $filters) {
   Floci logs put-metric-filter --log-group-name $LambdaLG --filter-name $f[0] --filter-pattern $f[1] `

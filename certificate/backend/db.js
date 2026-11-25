@@ -54,3 +54,38 @@ export const insert = (c) =>
      RETURNING *`,
     [c.certificateId, c.workshopId, c.attendeeId, c.attendeeName, c.workshopTitle, c.verificationCode]
   );
+
+// All certificates of one workshop (the organizer's view), newest first.
+export const listByWorkshop = async (workshopId) =>
+  (await pool.query(`${SELECT} WHERE r.workshop_id = $1 ORDER BY c.issued_at DESC`, [workshopId])).rows;
+
+// Revoke = the only UPDATE this service makes. "AND revoked_at IS NULL" means a certificate can be
+// revoked once and never un-revoked; the database policy enforces the same rule (revoke.sql).
+// Returns null if it was already revoked.
+export const revoke = (certificateId, organizerId, reason) =>
+  one(
+    `UPDATE certificates
+     SET revoked_at = now(), revoked_by = $2, revoke_reason = $3
+     WHERE certificate_id = $1 AND revoked_at IS NULL
+     RETURNING certificate_id, revoked_at, revoke_reason`,
+    [certificateId, organizerId, reason]
+  );
+
+// ---------- Rate limiting (proposal 6.2, threats 4 and 6) ----------
+// Counts requests per caller and route in the current minute. Stored in the database so the
+// limit holds across every copy of the Lambda (API Gateway throttling is not enforced on Floci).
+// Returns the number of hits in this minute, including this one.
+export async function countHit(bucket) {
+  const { rows } = await pool.query(
+    `INSERT INTO public.certificate_rate_limits (bucket, window_start, hits)
+     VALUES ($1, date_trunc('minute', now()), 1)
+     ON CONFLICT (bucket, window_start) DO UPDATE SET hits = certificate_rate_limits.hits + 1
+     RETURNING hits`,
+    [bucket]
+  );
+  // Now and then, remove counters older than 10 minutes so the table stays tiny.
+  if (Math.random() < 0.02) {
+    pool.query("DELETE FROM public.certificate_rate_limits WHERE window_start < now() - interval '10 minutes'").catch(() => {});
+  }
+  return rows[0].hits;
+}

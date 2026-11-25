@@ -16,3 +16,14 @@
 .verify-result th { width: 11rem; border-bottom: 1px solid var(--line); }
 /* Space between the certificate list and the "Get a certificate" section */
 #certificate-list { margin-bottom: 2.5rem; }
+
+/* ---------- revoke (organizer) ---------- */
+.cert-badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.cert-badge.valid { background: #e6f4ea; color: #1e6b34; }
+.cert-badge.revoked { background: #fdecea; color: #a12622; }
+.cert-reason { font-size: 0.85rem; opacity: 0.8; }
+.cert-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.95rem; }
+.cert-table th, .cert-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(0, 0, 0, 0.08); vertical-align: middle; }
+.cert-manage { align-items: start; }
+.revoke-form { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.revoke-form input { min-width: 12rem; }

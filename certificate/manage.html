@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hader - Manage certificates</title>
+  <link rel="stylesheet" href="../shared/style.css">
+  <link rel="stylesheet" href="certificate.css">
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main>
+    <h1>Manage certificates</h1>
+    <p class="lead">Certificates issued for the workshops you organize. You can revoke one that was
+      issued by mistake; the public verification page will then show it as revoked.
+      Revoking cannot be undone.</p>
+    <p id="message" class="message" hidden></p>
+
+    <section class="workshops" id="workshop-list">
+      <p class="empty">Loading...</p>
+    </section>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="certificate-config.js"></script>
+  <script src="certificate-api.js"></script>
+  <script src="manage.js"></script>
+</body>
+</html>

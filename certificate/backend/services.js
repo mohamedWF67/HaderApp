@@ -21,7 +21,11 @@ export async function getWorkshop(workshopId, token) {
 
 // Brevo email (external API). A failed email never blocks the certificate.
 export async function sendEmail(toEmail, toName, cert) {
-  if (!process.env.BREVO_API_KEY || !toEmail) return false;
+  const certificateId = cert.certificate_id;
+  if (!process.env.BREVO_API_KEY || !toEmail) {
+    console.log(JSON.stringify({ event: 'email_skipped', certificateId, reason: !toEmail ? 'no email in login token' : 'BREVO_API_KEY not set' }));
+    return false;
+  }
   const verifyUrl = `${(process.env.FRONTEND_ORIGIN || '').split(',')[0].trim()}/certificate/verify.html?code=${cert.verification_code}`;
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -35,9 +39,18 @@ export async function sendEmail(toEmail, toName, cert) {
           `Hello ${toName},\n\nYour certificate for "${cert.workshop_title}" is ready. ` +
           `Log in to download it.\n\nAnyone can verify it here: ${verifyUrl}`,
       }),
+      signal: AbortSignal.timeout(8000),
     });
-    return res.ok;
-  } catch {
+    if (res.ok) {
+      console.log(JSON.stringify({ event: 'email_sent', certificateId }));
+      return true;
+    }
+    // Brevo explains failures in its JSON body (code + message). The API key is never logged.
+    const body = await res.json().catch(() => ({}));
+    console.log(JSON.stringify({ event: 'email_failed', certificateId, status: res.status, code: body.code, message: body.message }));
+    return false;
+  } catch (err) {
+    console.log(JSON.stringify({ event: 'email_failed', certificateId, reason: err.name === 'TimeoutError' ? 'timeout' : err.message }));
     return false;
   }
 }

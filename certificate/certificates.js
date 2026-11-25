@@ -23,9 +23,17 @@ function certificateRow(c) {
   info.append(el('h3', {}, c.workshop_title), el('p', { className: 'host' }, `Awarded to ${c.attendee_name}`), code);
 
   const side = el('div', { className: 'side' });
-  const download = el('button', {}, 'Download PDF');
-  download.addEventListener('click', () => downloadCertificate(c, download));
-  side.append(download, el('a', { href: verifyPageUrl(c.verification_code), className: 'cert-link' }, 'Public verification page'));
+  if (c.revoked_at) {
+    // Revoked by the workshop's organizer: no download (the backend answers 410 anyway).
+    const note = el('p', { className: 'cert-status' });
+    note.append(el('span', { className: 'cert-badge revoked' }, 'Revoked'), ` on ${formatDate(c.revoked_at)}: ${c.revoke_reason}`);
+    info.append(note);
+  } else {
+    const download = el('button', {}, 'Download PDF');
+    download.addEventListener('click', () => downloadCertificate(c, download));
+    side.append(download);
+  }
+  side.append(el('a', { href: verifyPageUrl(c.verification_code), className: 'cert-link' }, 'Public verification page'));
 
   row.append(dateBlock(c.issued_at), info, side);
   return row;
@@ -129,7 +137,7 @@ async function generateCertificate(workshopId, title, btn) {
       ? `Certificate created for ${title}. We also emailed you a link.`
       : `Certificate created for ${title}. You can download it below.`, 'success');
   } catch (err) {
-    showMessage(message, err.status === 409 ? 'You already have a certificate for this workshop.' : err.message,
+    showMessage(message, err.message,
       err.status === 409 ? 'info' : 'error');
     btn.disabled = false;
   }

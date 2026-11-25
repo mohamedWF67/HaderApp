@@ -23,8 +23,13 @@ async function verify(code) {
   showMessage(message, 'Checking...', 'info');
   try {
     const c = await certApi(`/certificates/verify/${encodeURIComponent(code)}`, { auth: false });
-    showMessage(message, 'This certificate is genuine.', 'success');
+    if (c.revoked) {
+      showMessage(message, 'This certificate was issued by Hader but has been REVOKED by the workshop organizer. It is no longer valid.', 'error');
+    } else {
+      showMessage(message, 'This certificate is genuine.', 'success');
+    }
     rows.replaceChildren(
+      detailRow('Status', c.revoked ? `Revoked on ${formatDate(c.revokedAt)}` : 'Valid'),
       detailRow('Awarded to', c.attendeeName),
       detailRow('Workshop', c.workshopTitle),
       detailRow('Issued', formatDate(c.issuedAt)),

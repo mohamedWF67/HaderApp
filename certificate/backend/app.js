@@ -5,6 +5,8 @@
 //   GET  /certificates/me                        attendee
 //   GET  /certificates/:id                       attendee who owns it  -> PDF
 //   GET  /certificates/verify/:code              anyone (no login)
+//   GET  /certificates/workshop/:workshopId      organizer of that workshop
+//   PATCH /certificates/:id/revoke { "reason" }  organizer of that workshop
 //
 // Runs inside Lambda through index.js (serverless-http), or locally with server.js.
 
@@ -34,7 +36,7 @@ app.use((req, res, next) => {
   res.set({
     'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
     Vary: 'Origin',
   });
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -71,13 +73,31 @@ async function rateLimit(req, res, next) {
 app.use(rateLimit); // 429 before any other work
 
 // ---------- auth middleware ----------
-async function requireAttendee(req, res, next) {
+async function requireLogin(req, res, next) {
   req.user = await getUser(req); // checks the Supabase login token (401 if missing/invalid)
-  if (req.user.role !== 'attendee') {
-    console.log(JSON.stringify({ event: 'role_denied', userId: req.user.userId, role: req.user.role || 'none' }));
-    throw new ApiError(403, 'Only attendees can do this');
+  next();
+}
+
+// Role comes from public.profiles (never from the request). Wrong role -> 403 + log.
+const requireRole = (role) => (req, res, next) => {
+  if (req.user.role !== role) {
+    console.log(JSON.stringify({ event: 'role_denied', userId: req.user.userId, role: req.user.role || 'none', needed: role, path: req.path }));
+    throw new ApiError(403, role === 'attendee' ? 'Only attendees can do this' : 'Only organizers can do this');
   }
   next();
+};
+const attendee = requireRole('attendee');
+const organizer = requireRole('organizer');
+
+// Organizer ownership: the workshop (from the Registration service) must be theirs.
+async function mustOwnWorkshop(user, workshopId) {
+  const workshop = await getWorkshop(workshopId, user.token);
+  if (!workshop) throw new ApiError(404, 'Workshop not found');
+  if (String(workshop.organizerId) !== user.userId) {
+    console.log(JSON.stringify({ event: 'organizer_access_denied', workshopId, userId: user.userId }));
+    throw new ApiError(403, 'Only the organizer of this workshop can do this');
+  }
+  return workshop;
 }
 
 // ---------- business logic ----------
@@ -91,10 +111,12 @@ async function checkEligibility(user, workshopId) {
     attendedSessions: a.attendedSessions,
     eligible: a.totalSessions > 0 && a.attendedSessions >= a.totalSessions,
     certificateId: existing?.certificate_id || null,
+    revoked: Boolean(existing?.revoked_at),
   };
 }
 
 const validWorkshopId = (id) => /^\d{1,9}$/.test(id); // workshop_id is int4
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------- routes ----------
 const router = express.Router();
@@ -107,25 +129,36 @@ router.get('/verify/:code', async (req, res) => {
     console.log(JSON.stringify({ event: 'certificate_verify_failed' }));
     throw new ApiError(404, 'No certificate matches this code');
   }
-  res.json({ valid: true, attendeeName: cert.attendee_name, workshopTitle: cert.workshop_title, issuedAt: cert.issued_at });
+  if (cert.revoked_at) {
+    console.log(JSON.stringify({ event: 'certificate_verify_revoked', certificateId: cert.certificate_id }));
+  }
+  // Public: only what is printed on the certificate, plus whether it was revoked (not who or why)
+  res.json({
+    valid: !cert.revoked_at,
+    revoked: Boolean(cert.revoked_at),
+    revokedAt: cert.revoked_at || null,
+    attendeeName: cert.attendee_name,
+    workshopTitle: cert.workshop_title,
+    issuedAt: cert.issued_at,
+  });
 });
 
-// Everything below needs a logged-in attendee
-router.use(requireAttendee);
+// Everything below needs a login; each route then checks the role it needs
+router.use(requireLogin);
 
-router.get('/eligibility/:workshopId', async (req, res) => {
+router.get('/eligibility/:workshopId', attendee, async (req, res) => {
   if (!validWorkshopId(req.params.workshopId)) throw new ApiError(400, 'workshopId is not valid');
   res.json(await checkEligibility(req.user, req.params.workshopId));
 });
 
-router.post('/', async (req, res) => {
+router.post('/', attendee, async (req, res) => {
   const user = req.user;
   const workshopId = String(req.body?.workshopId ?? '');
   if (!validWorkshopId(workshopId)) throw new ApiError(400, 'workshopId is not valid');
 
-  if (await db.findByAttendee(user.userId, workshopId)) {
-    throw new ApiError(409, 'You already have a certificate for this workshop');
-  }
+  const existing = await db.findByAttendee(user.userId, workshopId);
+  if (existing?.revoked_at) throw new ApiError(409, 'Your certificate for this workshop was revoked; contact the organizer');
+  if (existing) throw new ApiError(409, 'You already have a certificate for this workshop');
   const e = await checkEligibility(user, workshopId);
   if (!e.eligible) {
     throw new ApiError(403, `You attended ${e.attendedSessions} of ${e.totalSessions} sessions; all are required`);
@@ -148,19 +181,57 @@ router.post('/', async (req, res) => {
   res.status(201).json({ ...cert, emailSent });
 });
 
-router.get('/me', async (req, res) => {
+router.get('/me', attendee, async (req, res) => {
   res.json({ certificates: await db.listByAttendee(req.user.userId) });
 });
 
-router.get('/:id', async (req, res) => {
+// ---------- organizer: see and revoke the certificates of their own workshop ----------
+router.get('/workshop/:workshopId', organizer, async (req, res) => {
+  const { workshopId } = req.params;
+  if (!validWorkshopId(workshopId)) throw new ApiError(400, 'workshopId is not valid');
+  const workshop = await mustOwnWorkshop(req.user, workshopId);
+  const rows = await db.listByWorkshop(workshopId);
+  res.json({
+    workshopId,
+    workshopTitle: workshop.title,
+    certificates: rows.map((c) => ({
+      certificateId: c.certificate_id,
+      attendeeName: c.attendee_name,
+      issuedAt: c.issued_at,
+      revokedAt: c.revoked_at,
+      revokeReason: c.revoke_reason,
+    })),
+  });
+});
+
+router.patch('/:id/revoke', organizer, async (req, res) => {
   const { id } = req.params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new ApiError(404, 'Certificate not found');
+  if (!UUID.test(id)) throw new ApiError(404, 'Certificate not found');
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  if (reason.length < 3 || reason.length > 200) throw new ApiError(400, 'reason is required (3-200 characters)');
+
+  const cert = await db.findById(id);
+  if (!cert) throw new ApiError(404, 'Certificate not found');
+  await mustOwnWorkshop(req.user, String(cert.workshop_id)); // 403 if not their workshop
+  if (cert.revoked_at) throw new ApiError(409, 'This certificate is already revoked');
+
+  const updated = await db.revoke(id, req.user.userId, reason);
+  if (!updated) throw new ApiError(409, 'This certificate is already revoked'); // two clicks at once
+  console.log(JSON.stringify({ event: 'certificate_revoked', certificateId: id, workshopId: cert.workshop_id, userId: req.user.userId }));
+  res.json({ certificateId: id, revoked: true, revokedAt: updated.revoked_at, reason: updated.revoke_reason });
+});
+
+// ---------- attendee: download their own PDF ----------
+router.get('/:id', attendee, async (req, res) => {
+  const { id } = req.params;
+  if (!UUID.test(id)) throw new ApiError(404, 'Certificate not found');
   const cert = await db.findById(id);
   if (!cert) throw new ApiError(404, 'Certificate not found');
   if (cert.attendee_id !== req.user.userId) {
     console.log(JSON.stringify({ event: 'certificate_access_denied', certificateId: id, userId: req.user.userId }));
     throw new ApiError(403, 'This certificate belongs to another user'); // threat 3
   }
+  if (cert.revoked_at) throw new ApiError(410, 'This certificate was revoked by the organizer');
   console.log(JSON.stringify({ event: 'certificate_downloaded', certificateId: id, userId: req.user.userId }));
   res.set('Content-Disposition', 'attachment; filename="certificate.pdf"');
   res.type('application/pdf').send(Buffer.from(await makePdf(cert)));

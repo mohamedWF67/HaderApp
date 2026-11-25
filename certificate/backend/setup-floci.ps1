@@ -3,7 +3,7 @@
     1. IAM role + least-privilege policy
     2. CloudWatch log groups (14-day retention)
     3. Lambda function (zips the code, uploads it, sets env.json)
-    4. REST API "workshop-api" with the 5 certificate routes (+ OPTIONS), deployed to "prod"
+    4. REST API "workshop-api" with the 7 certificate routes (+ OPTIONS), deployed to "prod"
     5. Stage throttling + access logs
     6. CloudWatch metric filters + alarms
 
@@ -163,13 +163,18 @@ $id     = Ensure-Res "/certificates" "{id}"
 $elig   = Ensure-Res "/certificates/eligibility" "{workshopId}"
 [void](Ensure-Res "/certificates" "verify")
 $verify = Ensure-Res "/certificates/verify" "{code}"
+$revoke = Ensure-Res "/certificates/{id}" "revoke"
+[void](Ensure-Res "/certificates" "workshop")
+$wsList = Ensure-Res "/certificates/workshop" "{workshopId}"
 
 $routes = @(
   @($certs,  "/certificates",                          "POST"),
   @($me,     "/certificates/me",                       "GET"),
   @($id,     "/certificates/{id}",                     "GET"),
   @($elig,   "/certificates/eligibility/{workshopId}", "GET"),
-  @($verify, "/certificates/verify/{code}",            "GET")
+  @($verify, "/certificates/verify/{code}",            "GET"),
+  @($revoke, "/certificates/{id}/revoke",              "PATCH"),   # organizer of the workshop
+  @($wsList, "/certificates/workshop/{workshopId}",    "GET")      # organizer of the workshop
 )
 foreach ($r in $routes) {
   Ensure-Method $r[0] $r[1] $r[2]
@@ -210,7 +215,9 @@ $filters = @(
   @("CertificateRoleDenied",   '{ $.event = "role_denied" }',               10, "10+ wrong-role requests in 5 min (threat 2)"),
   @("CertificateVerifyFailed", '{ $.event = "certificate_verify_failed" }', 20, "20+ failed verifications in 5 min - code guessing? (threat 4)"),
   @("CertificateAuthFailed",   '{ $.event = "auth_failed" }',               20, "20+ invalid logins in 5 min (threat 2)"),
-  @("CertificateRateLimited",  '{ $.event = "rate_limited" }',              20, "20+ requests refused by the rate limiter in 5 min - flood or code guessing (threats 4, 6)")
+  @("CertificateRateLimited",  '{ $.event = "rate_limited" }',              20, "20+ requests refused by the rate limiter in 5 min - flood or code guessing (threats 4, 6)"),
+  @("OrganizerAccessDenied",   '{ $.event = "organizer_access_denied" }',   5,  "5+ organizer requests on workshops they do not own in 5 min (threat 3)"),
+  @("CertificateRevoked",      '{ $.event = "certificate_revoked" }',       10, "10+ certificates revoked in 5 min - misuse of an organizer account?")
 )
 foreach ($f in $filters) {
   Floci logs put-metric-filter --log-group-name $LambdaLG --filter-name $f[0] --filter-pattern $f[1] `

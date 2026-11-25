@@ -71,6 +71,10 @@ export const revoke = (certificateId, organizerId, reason) =>
     [certificateId, organizerId, reason]
   );
 
+// The attendee's email, only for a certificate that is already revoked (see revoke.sql).
+export const getRevokedEmail = async (certificateId) =>
+  (await one('SELECT public.revoked_certificate_email($1) AS email', [certificateId]))?.email || null;
+
 // ---------- Rate limiting (proposal 6.2, threats 4 and 6) ----------
 // Counts requests per caller and route in the current minute. Stored in the database so the
 // limit holds across every copy of the Lambda (API Gateway throttling is not enforced on Floci).

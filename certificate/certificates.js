@@ -5,13 +5,6 @@ const message = document.getElementById('message');
 const certList = document.getElementById('certificate-list');
 const eligibilityList = document.getElementById('eligibility-list');
 
-// The shared nav has no Certificates link yet, so add one on this page.
-function addCertificatesLink() {
-  const nav = document.getElementById('nav');
-  const link = el('a', { href: appUrl('certificate/certificates.html') }, 'Certificates');
-  link.setAttribute('aria-current', 'page');
-  nav.insertBefore(link, nav.querySelector('.nav-right'));
-}
 
 // ---------- My certificates ----------
 function certificateRow(c) {
@@ -159,38 +152,12 @@ async function loadAll() {
   await loadEligibility(certificates);
 }
 
-// Role from the login token, only to choose what to show (the backend enforces the real rule).
-function roleFromToken() {
-  try {
-    const payload = JSON.parse(atob(getToken().split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return (payload.app_metadata && payload.app_metadata.role) || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// If the Registration API cannot be reached (it builds the shared nav), draw a simple nav here
-// so the certificate page still works on its own.
-function fallbackNav() {
-  const nav = document.getElementById('nav');
-  const brand = el('a', { href: appUrl('registration/workshops.html'), className: 'brand' }, 'Hader');
-  brand.append(el('span', { lang: 'ar' }, 'حاضر'));
-  const right = el('span', { className: 'nav-right' });
-  right.append(el('button', { className: 'link', onclick: logout }, 'Log out'));
-  nav.replaceChildren(brand, el('a', { href: appUrl('registration/workshops.html') }, 'Workshops'), right);
-}
-
 (async function start() {
   if (!requireLoginPage()) return;
-  let role;
-  try {
-    role = (await loadNav()).role;
-  } catch (err) {
-    fallbackNav();
-    role = roleFromToken();
-  }
-  addCertificatesLink();
-  if (role && role !== 'attendee') {
+  // Shared nav (same on every page). If the Registration API is down it still draws a
+  // nav and returns the role from the token when known; the backend enforces roles anyway.
+  const me = await loadNav();
+  if (me.role && me.role !== 'attendee') {
     showMessage(message, 'Certificates are for attendees. Organizers can see their workshops on the Workshops page.', 'info');
     certList.replaceChildren();
     eligibilityList.replaceChildren();

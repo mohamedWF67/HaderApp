@@ -87,39 +87,110 @@ function seatStrip(total, left) {
   return wrap;
 }
 
-// Shared top navigation: links for the user's role, their name and role, and log out.
-async function loadNav() {
-  const me = await api(CONFIG.REGISTRATION_API, '/me');
+// ---------- Shared top navigation (the same on every page) ----------
+// Links: Workshops, My seats, Certificates, Attendance, Verify.
+// Right side: notifications bell (with unread count), the user's name and role, Log out.
+// Each page still checks the role itself and the backend enforces it (403);
+// the nav only helps people move around.
+
+const NAV_LINKS = [
+  ['Workshops', 'registration/workshops.html'],
+  ['My seats', 'registration/my-registrations.html'],
+  ['Certificates', 'certificate/certificates.html'],
+  ['Attendance', 'attendance/attendance.html'],
+  ['Verify', 'certificate/verify.html']
+];
+
+function bellIcon() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'bell-icon');
+  for (const d of ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0']) {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
+}
+
+// Role from the login token, only used when /me cannot be loaded (display only).
+function roleFromToken() {
+  try {
+    const p = JSON.parse(atob(getToken().split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return (p.app_metadata && p.app_metadata.role) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderNav(me, { loggedIn = true, unread = 0 } = {}) {
   const nav = document.getElementById('nav');
   const brand = el('a', { href: appUrl('registration/workshops.html'), className: 'brand' }, 'Hader');
   brand.append(el('span', { lang: 'ar' }, 'حاضر'));
-  const links = [brand, el('a', { href: appUrl('registration/workshops.html') }, 'Workshops')];
-  if (me.role === 'attendee') {
-    links.push(el('a', { href: appUrl('registration/my-registrations.html') }, 'My seats'));
+
+  const links = NAV_LINKS
+    .filter(([label]) => loggedIn || label === 'Verify')
+    .map(([label, page]) => {
+      const a = el('a', { href: appUrl(page) }, label);
+      if (new URL(a.href).pathname === window.location.pathname) a.setAttribute('aria-current', 'page');
+      return a;
+    });
+  nav.replaceChildren(brand, ...links);
+
+  const right = el('span', { className: 'nav-right' });
+  if (loggedIn) {
+    const bell = el('a', { href: appUrl('registration/notifications.html'), className: 'bell' });
+    bell.append(bellIcon());
+    bell.setAttribute('aria-label', unread > 0 ? `Notifications, ${unread} unread` : 'Notifications');
+    bell.title = 'Notifications';
+    if (unread > 0) bell.append(el('span', { className: 'badge' }, String(unread)));
+    if (new URL(bell.href).pathname === window.location.pathname) bell.setAttribute('aria-current', 'page');
+    const who = me && me.name ? `${me.name}, ${me.role}` : (me && me.role ? `Signed in, ${me.role}` : 'Signed in');
+    right.append(bell, el('span', { className: 'who' }, who), el('button', { className: 'link', onclick: logout }, 'Log out'));
+  } else {
+    right.append(el('a', { href: appUrl('login.html') }, 'Log in'));
   }
-  if (me.role === 'organizer') {
-    links.push(el('a', { href: appUrl('attendance/attendance.html') }, 'Attendance'));
+  nav.append(right);
+}
+
+// Pages that need a login call this. Returns the user ({ userId, name, role, ... }).
+// If the Registration API cannot be reached, the nav is still drawn (role from the token)
+// so the page keeps working; the page itself shows any error.
+async function loadNav() {
+  let me;
+  try {
+    me = await api(CONFIG.REGISTRATION_API, '/me');
+  } catch (err) {
+    if (!getToken()) throw err; // api() already sent the user to the login page
+    renderNav({ role: roleFromToken() });
+    return { role: roleFromToken(), navFallback: true };
   }
-  // Notifications link with the number of unread messages. If it cannot load,
-  // the page still works: the link is shown without a number.
-  const bell = el('a', { href: appUrl('registration/notifications.html'), className: 'bell' }, 'Notifications');
+  renderNav(me);
   try {
     const { unread } = await api(CONFIG.REGISTRATION_API, '/notifications/me');
-    if (unread > 0) {
-      bell.append(el('span', { className: 'badge' }, String(unread)));
-      bell.setAttribute('aria-label', `Notifications, ${unread} unread`);
-    }
-  } catch (e) { /* keep the plain link */ }
-  links.push(bell);
-  for (const a of links.slice(1)) {
-    if (new URL(a.href).pathname === window.location.pathname) a.setAttribute('aria-current', 'page');
-  }
-  nav.replaceChildren(...links);
-  const right = el('span', { className: 'nav-right' });
-  right.append(
-    el('span', { className: 'who' }, `${me.name || 'Signed in'}, ${me.role}`),
-    el('button', { className: 'link', onclick: logout }, 'Log out')
-  );
-  nav.append(right);
+    if (unread > 0) renderNav(me, { unread });
+  } catch (e) { /* keep the bell without a number */ }
   return me;
+}
+
+// Public pages (verify): full nav if logged in, otherwise just Verify + Log in.
+function tokenStillValid() {
+  try {
+    const p = JSON.parse(atob(getToken().split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return p.exp * 1000 > Date.now() + 10000;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function loadPublicNav() {
+  // Only use the logged-in nav with a valid token: an expired one would make api()
+  // send the visitor to the login page, and this page must stay public.
+  if (getToken() && tokenStillValid()) {
+    try { return await loadNav(); } catch (e) { /* fall through */ }
+  }
+  renderNav(null, { loggedIn: false });
+  return null;
 }

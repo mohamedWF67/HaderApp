@@ -19,14 +19,15 @@ export async function getWorkshop(workshopId, token) {
   return items.find((w) => String(w.workshopId ?? w.id) === String(workshopId)) || null;
 }
 
-// Brevo email (external API). A failed email never blocks the certificate.
-export async function sendEmail(toEmail, toName, cert) {
-  const certificateId = cert.certificate_id;
+// ---------- Brevo email (external API) ----------
+// A failed email never blocks the action it reports on. The API key is never logged.
+const frontendUrl = () => (process.env.FRONTEND_ORIGIN || '').split(',')[0].trim();
+
+async function sendBrevo(kind, certificateId, toEmail, toName, subject, textContent) {
   if (!process.env.BREVO_API_KEY || !toEmail) {
-    console.log(JSON.stringify({ event: 'email_skipped', certificateId, reason: !toEmail ? 'no email in login token' : 'BREVO_API_KEY not set' }));
+    console.log(JSON.stringify({ event: 'email_skipped', kind, certificateId, reason: !toEmail ? 'no email address' : 'BREVO_API_KEY not set' }));
     return false;
   }
-  const verifyUrl = `${(process.env.FRONTEND_ORIGIN || '').split(',')[0].trim()}/certificate/verify.html?code=${cert.verification_code}`;
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -34,23 +35,42 @@ export async function sendEmail(toEmail, toName, cert) {
       body: JSON.stringify({
         sender: { email: process.env.BREVO_SENDER_EMAIL, name: 'Workshop Certificates' },
         to: [{ email: toEmail, name: toName }],
-        subject: 'Your workshop certificate is ready',
-        textContent:
-          `Hello ${toName},\n\nYour certificate for "${cert.workshop_title}" is ready. ` +
-          `Log in to download it.\n\nAnyone can verify it here: ${verifyUrl}`,
+        subject,
+        textContent,
       }),
       signal: AbortSignal.timeout(8000),
     });
     if (res.ok) {
-      console.log(JSON.stringify({ event: 'email_sent', certificateId }));
+      console.log(JSON.stringify({ event: 'email_sent', kind, certificateId }));
       return true;
     }
-    // Brevo explains failures in its JSON body (code + message). The API key is never logged.
+    // Brevo explains failures in its JSON body (code + message).
     const body = await res.json().catch(() => ({}));
-    console.log(JSON.stringify({ event: 'email_failed', certificateId, status: res.status, code: body.code, message: body.message }));
+    console.log(JSON.stringify({ event: 'email_failed', kind, certificateId, status: res.status, code: body.code, message: body.message }));
     return false;
   } catch (err) {
-    console.log(JSON.stringify({ event: 'email_failed', certificateId, reason: err.name === 'TimeoutError' ? 'timeout' : err.message }));
+    console.log(JSON.stringify({ event: 'email_failed', kind, certificateId, reason: err.name === 'TimeoutError' ? 'timeout' : err.message }));
     return false;
   }
+}
+
+// Certificate issued -> tell the attendee, with the public verification link.
+export function sendEmail(toEmail, toName, cert) {
+  const verifyUrl = `${frontendUrl()}/certificate/verify.html?code=${cert.verification_code}`;
+  return sendBrevo('issued', cert.certificate_id, toEmail, toName,
+    'Your workshop certificate is ready',
+    `Hello ${toName},\n\nYour certificate for "${cert.workshop_title}" is ready. ` +
+    `Log in to download it.\n\nAnyone can verify it here: ${verifyUrl}`);
+}
+
+// Certificate revoked by the workshop's organizer -> tell the attendee why.
+export function sendRevokedEmail(toEmail, cert, reason) {
+  const name = cert.attendee_name;
+  return sendBrevo('revoked', cert.certificate_id, toEmail, name,
+    'Your workshop certificate was revoked',
+    `Hello ${name},\n\nYour certificate for "${cert.workshop_title}" has been revoked by the workshop's organizer ` +
+    `and is no longer valid. The public verification page now shows it as revoked.\n\n` +
+    `Reason given: ${reason}\n\n` +
+    `If you think this is a mistake, please contact the workshop's organizer.\n\n` +
+    `Your certificates: ${frontendUrl()}/certificate/certificates.html`);
 }

@@ -71,11 +71,12 @@ function showRevokeForm(c, w, cell, body, btn) {
     e.preventDefault();
     confirmBtn.disabled = true;
     try {
-      await certApi(`/certificates/${encodeURIComponent(c.certificateId)}/revoke`, {
+      const r = await certApi(`/certificates/${encodeURIComponent(c.certificateId)}/revoke`, {
         method: 'PATCH',
         body: { reason: input.value.trim() },
       });
-      showMessage(message, `${c.attendeeName}'s certificate for ${w.title} was revoked.`, 'success');
+      showMessage(message, `${c.attendeeName}'s certificate for ${w.title} was revoked.` +
+        (r.emailSent ? ' They have been emailed the reason.' : ' (The email to the attendee could not be sent.)'), 'success');
       await loadCertificates(w, body, btn);
     } catch (err) {
       showMessage(message, `Could not revoke: ${err.message}`, 'error');

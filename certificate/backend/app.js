@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import { getUser, AuthError } from './auth.js';
 import * as db from './db.js';
-import { getAttendance, getWorkshop, sendEmail } from './services.js';
+import { getAttendance, getWorkshop, sendEmail, sendRevokedEmail } from './services.js';
 import { makePdf } from './pdf.js';
 
 const ALLOWED_ORIGINS = (process.env.FRONTEND_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
@@ -218,7 +218,15 @@ router.patch('/:id/revoke', organizer, async (req, res) => {
   const updated = await db.revoke(id, req.user.userId, reason);
   if (!updated) throw new ApiError(409, 'This certificate is already revoked'); // two clicks at once
   console.log(JSON.stringify({ event: 'certificate_revoked', certificateId: id, workshopId: cert.workshop_id, userId: req.user.userId }));
-  res.json({ certificateId: id, revoked: true, revokedAt: updated.revoked_at, reason: updated.revoke_reason });
+
+  // Tell the attendee (Brevo). A failed lookup or email never undoes the revoke.
+  let emailSent = false;
+  try {
+    emailSent = await sendRevokedEmail(await db.getRevokedEmail(id), cert, updated.revoke_reason);
+  } catch (err) {
+    console.log(JSON.stringify({ event: 'email_failed', kind: 'revoked', certificateId: id, reason: err.message }));
+  }
+  res.json({ certificateId: id, revoked: true, revokedAt: updated.revoked_at, reason: updated.revoke_reason, emailSent });
 });
 
 // ---------- attendee: download their own PDF ----------

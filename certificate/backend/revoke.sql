@@ -38,3 +38,28 @@ ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 -- Check:
 -- SELECT column_name, privilege_type FROM information_schema.column_privileges
 --  WHERE table_name = 'certificates' AND grantee = 'certificate_service' AND privilege_type = 'UPDATE';
+
+-- ---------------------------------------------------------------------
+-- Revocation email: the attendee's address for a REVOKED certificate.
+-- Emails live only in Supabase Auth (auth.users). Instead of giving certificate_service
+-- any access to the auth schema, this one function returns a single email, and only for a
+-- certificate that has already been revoked - so it cannot be used to look up other users.
+-- SECURITY DEFINER = runs with the owner's rights; search_path is pinned so it can't be hijacked.
+CREATE OR REPLACE FUNCTION public.revoked_certificate_email(p_certificate_id UUID)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT u.email
+  FROM public.certificates c
+  JOIN public.registrations r ON r.registration_id = c.registration_id
+  JOIN auth.users u ON u.id = r.attendee_id
+  WHERE c.certificate_id = p_certificate_id
+    AND c.revoked_at IS NOT NULL;
+$$;
+
+-- Supabase lets anon/authenticated call new public functions by default (through the REST API).
+REVOKE ALL ON FUNCTION public.revoked_certificate_email(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.revoked_certificate_email(UUID) TO certificate_service;

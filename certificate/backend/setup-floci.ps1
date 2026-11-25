@@ -183,7 +183,8 @@ $filters = @(
   @("CertificateAccessDenied", '{ $.event = "certificate_access_denied" }', 5,  "5+ attempts to open other users' certificates in 5 min (threat 3)"),
   @("CertificateRoleDenied",   '{ $.event = "role_denied" }',               10, "10+ wrong-role requests in 5 min (threat 2)"),
   @("CertificateVerifyFailed", '{ $.event = "certificate_verify_failed" }', 20, "20+ failed verifications in 5 min - code guessing? (threat 4)"),
-  @("CertificateAuthFailed",   '{ $.event = "auth_failed" }',               20, "20+ invalid logins in 5 min (threat 2)")
+  @("CertificateAuthFailed",   '{ $.event = "auth_failed" }',               20, "20+ invalid logins in 5 min (threat 2)"),
+  @("CertificateRateLimited",  '{ $.event = "rate_limited" }',              20, "20+ requests refused by the rate limiter in 5 min - flood or code guessing (threats 4, 6)")
 )
 foreach ($f in $filters) {
   Floci logs put-metric-filter --log-group-name $LambdaLG --filter-name $f[0] --filter-pattern $f[1] `

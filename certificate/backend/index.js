@@ -114,6 +114,37 @@ async function verify(code) {
   return { valid: true, attendeeName: cert.attendee_name, workshopTitle: cert.workshop_title, issuedAt: cert.issued_at };
 }
 
+// ---------- rate limits (per caller IP, per minute) ----------
+// Stricter on /verify (stops verification codes being guessed, threat 4) and on generating;
+// a general limit on everything else (floods, threat 6). Values can be changed with env vars.
+const LIMITS = {
+  verify: Number(process.env.RATE_LIMIT_VERIFY || 10),
+  generate: Number(process.env.RATE_LIMIT_GENERATE || 10),
+  other: Number(process.env.RATE_LIMIT_OTHER || 60),
+};
+
+async function checkRateLimit(event, method, parts) {
+  const ip = event.requestContext?.identity?.sourceIp || event.requestContext?.http?.sourceIp || 'unknown';
+  const route = method === 'GET' && parts[1] === 'verify' ? 'verify'
+    : method === 'POST' && parts.length === 1 ? 'generate' : 'other';
+  let hits;
+  try {
+    hits = await db.countHit(`cert:${route}:${ip}`);
+  } catch (err) {
+    // If the counter cannot be reached, let the request through rather than block everyone.
+    console.log(JSON.stringify({ event: 'rate_limit_error', message: err.message }));
+    return null;
+  }
+  if (hits <= LIMITS[route]) return null;
+  console.log(JSON.stringify({ event: 'rate_limited', route, ip, hits }));
+  const retryAfter = 60 - new Date().getUTCSeconds();
+  return {
+    statusCode: 429,
+    headers: { ...headers, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+    body: JSON.stringify({ error: `Too many requests. Try again in ${retryAfter} seconds.` }),
+  };
+}
+
 // ---------- router ----------
 export async function handler(event) {
   const method = event.requestContext?.http?.method || event.httpMethod;
@@ -123,6 +154,9 @@ export async function handler(event) {
 
   try {
     if (method === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+
+    const limited = await checkRateLimit(event, method, parts); // 429 before any other work
+    if (limited) return limited;
 
     if (method === 'GET' && parts[1] === 'verify') return reply(200, await verify(parts[2] || ''));
 

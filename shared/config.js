@@ -10,7 +10,7 @@ function appUrl(page) {
 
 const CONFIG = {
   // Each service's API. Locally each runs on its own port; in AWS they become API Gateway addresses.
-  REGISTRATION_API: 'https://hader-registration-backend.vercel.app',
+  REGISTRATION_API: 'http://localhost:4566/execute-api/28d22b6d02/$default',
 
   // Supabase Auth (login and sign-up)
   SUPABASE_URL: 'https://lydhdtlxodhyqjhvcfdu.supabase.co',

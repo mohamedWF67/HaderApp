@@ -1,6 +1,7 @@
 // Workshops page.
-// Attendees: see workshops and register.
-// Organizers: create and edit their workshops, and see who registered.
+// Attendees: see workshops, register, or join the waiting list of a full workshop.
+// Organizers: create, edit and delete their workshops, set a registration deadline,
+// see who registered and remove an attendee.
 // (Hidden buttons are only for convenience: the backend checks every role and owner itself.)
 
 const API = CONFIG.REGISTRATION_API;
@@ -14,6 +15,8 @@ const attendeesPanel = document.getElementById('attendees-panel');
 
 let me = null;
 let editingId = null; // null = creating a new workshop
+let myRegistrations = new Map(); // workshopId -> registration (attendees only)
+let myQueue = new Map();         // workshopId -> waiting list entry (attendees only)
 
 // datetime-local input <-> ISO date string
 function toInputDate(iso) {
@@ -23,8 +26,19 @@ function toInputDate(iso) {
 }
 
 function seatCount(w) {
-  if (w.seatsLeft === 0) return 'Full';
-  return w.seatsLeft === 1 ? '1 seat left' : `${w.seatsLeft} of ${w.totalSeats} seats left`;
+  let text;
+  if (w.seatsLeft === 0) text = 'Full';
+  else text = w.seatsLeft === 1 ? '1 seat left' : `${w.seatsLeft} of ${w.totalSeats} seats left`;
+  if (w.waitingCount > 0) text += ` · ${w.waitingCount} waiting`;
+  return text;
+}
+
+function registrationClosed(w) {
+  return Boolean(w.registrationDeadline) && new Date(w.registrationDeadline) <= new Date();
+}
+
+function positionText(n) {
+  return n === 1 ? 'You are next in line' : `You are number ${n} in line`;
 }
 
 function workshopRow(w) {
@@ -34,23 +48,49 @@ function workshopRow(w) {
   const info = el('div');
   info.append(el('h3', {}, w.title), el('p', { className: 'host' }, `Hosted by ${w.organizerName || 'an organizer'}`));
   if (w.description) info.append(el('p', { className: 'desc' }, w.description));
+  if (w.registrationDeadline) {
+    info.append(el('p', { className: registrationClosed(w) ? 'deadline closed' : 'deadline' },
+      registrationClosed(w) ? 'Registration closed' : `Registration closes ${formatDate(w.registrationDeadline)}`));
+  }
 
   const side = el('div', { className: 'side' });
   side.append(seatStrip(w.totalSeats, w.seatsLeft), el('span', { className: 'seat-count' }, seatCount(w)));
 
   const buttons = el('div', { className: 'buttons' });
   if (me.role === 'attendee') {
-    const btn = el('button', {}, w.seatsLeft === 0 ? 'No seats left' : 'Register');
-    btn.disabled = w.seatsLeft === 0;
-    btn.addEventListener('click', () => register(w, btn));
-    buttons.append(btn);
+    const reg = myRegistrations.get(w.workshopId);
+    const queued = myQueue.get(w.workshopId);
+    if (reg) {
+      const done = el('button', {}, 'You have a seat');
+      done.disabled = true;
+      buttons.append(done);
+    } else if (queued) {
+      side.append(el('span', { className: 'queue-note' }, positionText(queued.position)));
+      const leave = el('button', { className: 'secondary' }, 'Leave queue');
+      leave.addEventListener('click', () => leaveQueue(w, queued, leave));
+      buttons.append(leave);
+    } else if (registrationClosed(w)) {
+      const closed = el('button', {}, 'Registration closed');
+      closed.disabled = true;
+      buttons.append(closed);
+    } else if (w.seatsLeft === 0) {
+      const join = el('button', { className: 'secondary' }, 'Join waiting list');
+      join.addEventListener('click', () => joinQueue(w, join));
+      buttons.append(join);
+    } else {
+      const btn = el('button', {}, 'Register');
+      btn.addEventListener('click', () => register(w, btn));
+      buttons.append(btn);
+    }
   }
   if (me.role === 'organizer' && w.organizerId === me.userId) {
     const edit = el('button', { className: 'secondary' }, 'Edit');
     edit.addEventListener('click', () => startEdit(w));
     const who = el('button', { className: 'secondary' }, 'See attendees');
     who.addEventListener('click', () => showAttendees(w));
-    buttons.append(edit, who);
+    const del = el('button', { className: 'danger' }, 'Delete');
+    del.addEventListener('click', () => deleteWorkshop(w, del));
+    buttons.append(edit, who, del);
   }
   if (buttons.children.length) side.append(buttons);
 
@@ -58,9 +98,17 @@ function workshopRow(w) {
   return row;
 }
 
+// Attendees: which workshops I already have a seat in, and which queues I am in.
+async function loadMine() {
+  if (me.role !== 'attendee') return;
+  const [regs, queue] = await Promise.all([api(API, '/registrations/me'), api(API, '/waitlist/me')]);
+  myRegistrations = new Map(regs.map(r => [r.workshop.workshopId, r]));
+  myQueue = new Map(queue.map(q => [q.workshop.workshopId, q]));
+}
+
 async function loadWorkshops() {
   try {
-    const workshops = await api(API, '/workshops');
+    const [workshops] = await Promise.all([api(API, '/workshops'), loadMine()]);
     const upcoming = workshops.filter(w => new Date(w.date) > new Date());
     if (upcoming.length === 0) {
       list.replaceChildren(el('p', { className: 'empty' }, me.role === 'organizer' ? 'No upcoming workshops. Create the first one above.' : 'No upcoming workshops yet. Check back soon.'));
@@ -83,6 +131,50 @@ async function register(w, btn) {
   await loadWorkshops();
 }
 
+async function joinQueue(w, btn) {
+  btn.disabled = true;
+  try {
+    const entry = await api(API, `/workshops/${w.workshopId}/waitlist`, { method: 'POST' });
+    showMessage(message, `You joined the waiting list for ${w.title}. ${positionText(entry.position)}. If a seat is freed, it becomes yours automatically.`, 'success');
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+  }
+  await loadWorkshops();
+}
+
+async function leaveQueue(w, entry, btn) {
+  if (!window.confirm(`Leave the waiting list for "${w.title}"? You will lose your place in line.`)) return;
+  btn.disabled = true;
+  try {
+    await api(API, `/waitlist/${entry.waitlistId}`, { method: 'DELETE' });
+    showMessage(message, `You left the waiting list for ${w.title}.`, 'success');
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+  }
+  await loadWorkshops();
+}
+
+// Organizers: delete their own workshop. The backend allows it only for the owner,
+// and only before the workshop starts.
+async function deleteWorkshop(w, btn) {
+  const taken = w.totalSeats - w.seatsLeft;
+  let warning = `Delete "${w.title}"? This cannot be undone.`;
+  if (taken > 0) warning += `\n\n${taken} ${taken === 1 ? 'person has' : 'people have'} a seat. Their registrations will be removed.`;
+  if (w.waitingCount > 0) warning += `\n${w.waitingCount} waiting in the queue will be removed too.`;
+  if (!window.confirm(warning)) return;
+  btn.disabled = true;
+  try {
+    await api(API, `/workshops/${w.workshopId}`, { method: 'DELETE' });
+    showMessage(message, `Workshop "${w.title}" deleted.`, 'success');
+    if (editingId === w.workshopId) resetForm();
+    attendeesPanel.hidden = true;
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+    btn.disabled = false;
+  }
+  await loadWorkshops();
+}
+
 function resetForm() {
   editingId = null;
   form.reset();
@@ -97,6 +189,7 @@ function startEdit(w) {
   document.getElementById('description').value = w.description;
   document.getElementById('date').value = toInputDate(w.date);
   document.getElementById('seats').value = w.totalSeats;
+  document.getElementById('deadline').value = w.registrationDeadline ? toInputDate(w.registrationDeadline) : '';
   formTitle.textContent = `Editing: ${w.title}`;
   saveButton.textContent = 'Save changes';
   cancelEdit.hidden = false;
@@ -109,7 +202,10 @@ form.addEventListener('submit', async (e) => {
     title: document.getElementById('title').value.trim(),
     description: document.getElementById('description').value.trim(),
     date: new Date(document.getElementById('date').value).toISOString(),
-    totalSeats: Number(document.getElementById('seats').value)
+    totalSeats: Number(document.getElementById('seats').value),
+    // Empty = no deadline (open until the workshop starts)
+    registrationDeadline: document.getElementById('deadline').value
+      ? new Date(document.getElementById('deadline').value).toISOString() : ''
   };
   saveButton.disabled = true;
   try {
@@ -143,11 +239,15 @@ async function showAttendees(w) {
     } else {
       const table = el('table');
       const head = el('tr');
-      head.append(el('th', {}, 'Name'), el('th', {}, 'Email'), el('th', {}, 'Registered on'));
+      head.append(el('th', {}, 'Name'), el('th', {}, 'Email'), el('th', {}, 'Registered on'), el('th', {}, ''));
       table.append(head);
       for (const p of people) {
         const row = el('tr');
-        row.append(el('td', {}, p.name || '-'), el('td', {}, p.email), el('td', {}, formatDate(p.registeredAt)));
+        const remove = el('button', { className: 'danger small' }, 'Remove');
+        remove.addEventListener('click', () => removeAttendee(w, p, remove));
+        const action = el('td');
+        action.append(remove);
+        row.append(el('td', {}, p.name || '-'), el('td', {}, p.email), el('td', {}, formatDate(p.registeredAt)), action);
         table.append(row);
       }
       box.replaceChildren(table);
@@ -156,6 +256,27 @@ async function showAttendees(w) {
     box.replaceChildren(el('p', { className: 'message error' }, err.message));
   }
   attendeesPanel.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Organizers: remove one attendee from their workshop. The seat goes to the
+// first person in the waiting list automatically (done by the backend).
+async function removeAttendee(w, person, btn) {
+  const who = person.name || person.email;
+  if (!window.confirm(`Remove ${who} from "${w.title}"? They will lose their seat.`)) return;
+  btn.disabled = true;
+  try {
+    const result = await api(API, `/workshops/${w.workshopId}/registrations/${person.registrationId}`, { method: 'DELETE' });
+    showMessage(message, result.seatGivenToWaitlist
+      ? `${who} was removed. Their seat went to the next person in the waiting list.`
+      : `${who} was removed. Their seat is free again.`, 'success');
+  } catch (err) {
+    showMessage(message, err.message, 'error');
+    btn.disabled = false;
+    return;
+  }
+  await loadWorkshops();
+  const fresh = (await api(API, '/workshops')).find(x => x.workshopId === w.workshopId);
+  if (fresh) await showAttendees(fresh);
 }
 
 document.getElementById('close-attendees').addEventListener('click', () => { attendeesPanel.hidden = true; });

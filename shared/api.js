@@ -97,6 +97,20 @@ async function loadNav() {
   if (me.role === 'attendee') {
     links.push(el('a', { href: appUrl('registration/my-registrations.html') }, 'My seats'));
   }
+  if (me.role === 'organizer') {
+    links.push(el('a', { href: appUrl('attendance/attendance.html') }, 'Attendance'));
+  }
+  // Notifications link with the number of unread messages. If it cannot load,
+  // the page still works: the link is shown without a number.
+  const bell = el('a', { href: appUrl('registration/notifications.html'), className: 'bell' }, 'Notifications');
+  try {
+    const { unread } = await api(CONFIG.REGISTRATION_API, '/notifications/me');
+    if (unread > 0) {
+      bell.append(el('span', { className: 'badge' }, String(unread)));
+      bell.setAttribute('aria-label', `Notifications, ${unread} unread`);
+    }
+  } catch (e) { /* keep the plain link */ }
+  links.push(bell);
   for (const a of links.slice(1)) {
     if (new URL(a.href).pathname === window.location.pathname) a.setAttribute('aria-current', 'page');
   }

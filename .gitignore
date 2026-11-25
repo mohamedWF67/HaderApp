@@ -1,7 +1,12 @@
-/.ideanode_modules/
+.idea/
+/.idea
+node_modules/
 .env
 .env.*
 !.env.example
+.vercel/
+dist/
+*.zip
 .vercel
 .idea
 package-lock.json
@@ -12,3 +17,7 @@ certificate/backend/function.zip
 certificate/backend/event.json
 certificate/backend/out.json
 certificate/backend/api-url.txt
+
+# Backend build files (services/registration)
+*.zip
+checks-result.json

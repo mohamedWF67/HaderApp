@@ -51,3 +51,6 @@ if (fromLink) {
   input.value = fromLink.trim();
   verify(input.value);
 }
+
+// Shared nav: full menu when logged in, otherwise Verify + Log in.
+loadPublicNav();

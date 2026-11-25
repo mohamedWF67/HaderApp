@@ -75,7 +75,6 @@ async function downloadCertificate(c, btn) {
 function eligibilityRow(r, issued) {
   const w = r.workshop || {};
   const workshopId = w.workshopId ?? r.workshopId;
-  const finished = new Date(w.date) <= new Date();
   const row = el('article', { className: 'workshop' });
 
   const info = el('div');
@@ -89,8 +88,6 @@ function eligibilityRow(r, issued) {
   if (issued.has(String(workshopId))) {
     status.textContent = 'Certificate issued. See "My certificates" above.';
     status.className = 'cert-status done';
-  } else if (!finished) {
-    status.textContent = 'This workshop has not finished yet.';
   } else if (workshopId === undefined) {
     status.textContent = 'Workshop id missing, cannot check attendance.';
   } else {
@@ -102,6 +99,10 @@ function eligibilityRow(r, issued) {
 async function checkEligibility(workshopId, title, status, side) {
   try {
     const e = await certApi(`/certificates/eligibility/${encodeURIComponent(workshopId)}`);
+    if (e.totalSessions === 0) {
+      status.textContent = 'No sessions have been added to this workshop yet.';
+      return;
+    }
     status.textContent = `You attended ${e.attendedSessions} of ${e.totalSessions} sessions.`;
     if (e.certificateId) {
       status.textContent += ' Certificate issued.';

@@ -11,6 +11,7 @@ for (const key of required) {
 }
 
 // Preserve any local developer origins and always include the deployed Hader site.
+require('../db/connection')(process.env.DATABASE_URL);
 const corsOrigins = new Set([
   'http://localhost:3003',
   'https://hader-app-five.vercel.app',

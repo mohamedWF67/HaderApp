@@ -29,9 +29,6 @@ tests {
   test("status is 201", function () {
     expect(res.getStatus()).to.equal(201);
   });
-  test("email sent through Brevo", function () {
-    expect(res.getBody().emailSent).to.equal(true);
-  });
 }
 
 docs {

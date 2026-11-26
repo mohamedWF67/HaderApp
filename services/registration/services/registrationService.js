@@ -160,10 +160,10 @@ async function listForWorkshop(workshopId, organizerId) {
     throw new ApiError(403, 'FORBIDDEN', 'Only the organizer of this workshop can see who registered.');
   }
   const { rows } = await pool.query(
-    `SELECT r.registration_id, r.attendee_id, r.created_at, p.name, u.email
+    `SELECT r.registration_id, r.attendee_id, r.created_at, p.name,
+            public.user_email(r.attendee_id) AS email   -- see db/006_service_role.sql
      FROM public.registrations r
      JOIN public.profiles p ON p.id = r.attendee_id
-     JOIN auth.users u ON u.id = r.attendee_id
      WHERE r.workshop_id = $1
      ORDER BY r.created_at ASC`,
     [workshopId]

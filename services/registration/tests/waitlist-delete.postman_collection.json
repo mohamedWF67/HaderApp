@@ -1,0 +1,944 @@
+{
+  "info": {
+    "name": "HaderApp - Delete & Waiting list v2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "New tests for DELETE /workshops/{id} and the waiting list. Uses the same 4 test users and password as the main collection."
+  },
+  "item": [
+    {
+      "name": "Login org1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "apikey",
+            "value": "{{supabaseKey}}"
+          }
+        ],
+        "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"organizer1@hader.test\", \"password\": \"{{testPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Logged in', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('token_org1', pm.response.json().access_token);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('futureDate', new Date(Date.now() + 14*24*3600*1000).toISOString());"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login org2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "apikey",
+            "value": "{{supabaseKey}}"
+          }
+        ],
+        "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"nour@hader.test\", \"password\": \"{{testPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Logged in', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('token_org2', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login att1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "apikey",
+            "value": "{{supabaseKey}}"
+          }
+        ],
+        "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"nada@hader.test\", \"password\": \"{{testPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Logged in', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('token_att1', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login att2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "apikey",
+            "value": "{{supabaseKey}}"
+          }
+        ],
+        "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"nayera@hader.test\", \"password\": \"{{testPassword}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Logged in', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('token_att2', pm.response.json().access_token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL1 Organizer creates a 1-seat workshop",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Waitlist test\",\n  \"description\": \"Postman\",\n  \"date\": \"{{futureDate}}\",\n  \"totalSeats\": 1\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('wlWorkshop', pm.response.json().workshopId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL2 Attendee 1 takes the only seat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/registrations"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('wlReg1', pm.response.json().registrationId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL3 Attendee 2 tries to register -> full, hint to waitlist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/registrations"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));",
+              "pm.test('Mentions waiting list', () => pm.expect(pm.response.json().error.message).to.include('waiting list'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL4 Attendee 2 joins waiting list (position 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Position 1', () => pm.expect(pm.response.json().position).to.eql(1));",
+              "pm.collectionVariables.set('wlEntry2', pm.response.json().waitlistId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL5 Joining twice -> 409 ALREADY_WAITING",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));",
+              "pm.test('Code', () => pm.expect(pm.response.json().error.code).to.eql('ALREADY_WAITING'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL6 Registered attendee cannot queue -> 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));",
+              "pm.test('Code', () => pm.expect(pm.response.json().error.code).to.eql('ALREADY_REGISTERED'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL7 SECURITY Organizer cannot join a waiting list -> 403",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL8 SECURITY No login -> 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL9 SECURITY Attendee 1 removes attendee 2's place -> 403",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/waitlist/{{wlEntry2}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL10 Attendee 2 sees own queue place",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/waitlist/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const e = pm.response.json().find(x => x.workshop.workshopId === pm.collectionVariables.get('wlWorkshop'));",
+              "pm.test('In queue at position 1', () => pm.expect(e && e.position).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL11 Workshop list shows waitingCount",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const w = pm.response.json().find(x => x.workshopId === pm.collectionVariables.get('wlWorkshop'));",
+              "pm.test('waitingCount is 1', () => pm.expect(w.waitingCount).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL12 Attendee 1 cancels -> seat goes to the queue",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/registrations/{{wlReg1}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Seat given to waiting list', () => pm.expect(pm.response.json().seatGivenToWaitlist).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL13 Attendee 2 is now registered automatically",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/registrations/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Registered', () => pm.expect(pm.response.json().some(r => r.workshop.workshopId === pm.collectionVariables.get('wlWorkshop'))).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL14 Attendee 2 is no longer in the queue",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/waitlist/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Not waiting', () => pm.expect(pm.response.json().some(e => e.workshop.workshopId === pm.collectionVariables.get('wlWorkshop'))).to.eql(false));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL15 Attendee 1 joins the queue now that it is full",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('wlEntry1', pm.response.json().waitlistId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL16 Attendee 1 leaves the queue",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/waitlist/{{wlEntry1}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Left', () => pm.expect(pm.response.json().status).to.eql('left'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL17 Leaving again -> 404",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/waitlist/{{wlEntry1}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL18 Organizer creates a workshop with free seats",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Free seats test\",\n  \"date\": \"{{futureDate}}\",\n  \"totalSeats\": 5\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('freeWorkshop', pm.response.json().workshopId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "WL19 Cannot queue while seats are free -> 409 SEATS_AVAILABLE",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{freeWorkshop}}/waitlist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));",
+              "pm.test('Code', () => pm.expect(pm.response.json().error.code).to.eql('SEATS_AVAILABLE'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL1 SECURITY Attendee cannot delete a workshop -> 403",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL2 SECURITY Another organizer cannot delete it -> 403",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL3 SECURITY No login -> 401",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL4 Invalid id -> 400",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/abc"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL5 Owner deletes the workshop",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Deleted, 1 registration removed', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('deleted'); pm.expect(j.registrationsRemoved).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL6 Deleting again -> 404",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{wlWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL7 Attendee 2's registration was removed with it",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_att2}}"
+          }
+        ],
+        "url": "{{baseUrl}}/registrations/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Gone', () => pm.expect(pm.response.json().some(r => r.workshop.workshopId === pm.collectionVariables.get('wlWorkshop'))).to.eql(false));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DEL8 Clean up the free-seats workshop",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_org1}}"
+          }
+        ],
+        "url": "{{baseUrl}}/workshops/{{freeWorkshop}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://0ef8ec9c0a.execute-api.localhost.floci.io:4566"
+    },
+    {
+      "key": "supabaseUrl",
+      "value": "https://lydhdtlxodhyqjhvcfdu.supabase.co"
+    },
+    {
+      "key": "supabaseKey",
+      "value": ""
+    },
+    {
+      "key": "testPassword",
+      "value": ""
+    }
+  ]
+}

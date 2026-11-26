@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploys the Workshop & Registration Service to Floci (local AWS), following Lab 7:
-#   IAM role -> Lambda functions -> API Gateway (HTTP API) -> EventBridge Scheduler.
+#   IAM role -> Lambda functions -> API Gateway (HTTP API) -> EventBridge Scheduler
+#   -> CloudWatch alarms (+ SNS topic for alerts).
 # Two functions share one code package:
 #   hader-registration-api     the API (handler lambda.handler), behind API Gateway
 #   hader-registration-checks  scheduled checks (handler scheduler.handler), run every
@@ -28,14 +29,14 @@ none() { [ -z "$1" ] || [ "$1" = "None" ]; }
 
 [ -f "$SERVICE/.env" ] || { echo "Run this from the root of the HaderApp repo ($SERVICE/.env not found)."; exit 1; }
 
-step "1/6 Check that we are talking to Floci"
+step "1/7 Check that we are talking to Floci"
 acct=$(aws sts get-caller-identity --query Account --output text)
 if [ "$acct" != "$ACCOUNT" ]; then
   echo "Account is $acct, expected $ACCOUNT. Run: export AWS_PROFILE=floci"; exit 1
 fi
 echo "OK, account $acct"
 
-step "2/6 IAM role: the function may only write its own logs (least privilege)"
+step "2/7 IAM role: the function may only write its own logs (least privilege)"
 if ! aws iam get-role --role-name "$ROLE" >/dev/null 2>&1; then
   aws iam create-role --role-name "$ROLE" \
     --assume-role-policy-document file://$SERVICE/infra/iam/lambda-trust-policy.json \
@@ -47,7 +48,7 @@ aws iam put-role-policy --role-name "$ROLE" --policy-name "$POLICY" \
   --policy-document file://$SERVICE/infra/iam/registration-logs-policy.json
 echo "Policy $POLICY attached"
 
-step "3/6 Build lambda.zip and create or update the two Lambda functions"
+step "3/7 Build lambda.zip and create or update the two Lambda functions"
 (cd "$SERVICE" && npm install --silent && npm run zip)
 ENV_JSON=$(cd "$SERVICE" && node scripts/lambda-env.js)
 
@@ -74,7 +75,7 @@ deploy_fn "$FN" lambda.handler
 deploy_fn "$CHECKS_FN" scheduler.handler
 rm -f "$SERVICE/lambda.zip"
 
-step "4/6 API Gateway: one HTTP API, only the routes this service needs"
+step "4/7 API Gateway: one HTTP API, only the routes this service needs"
 API_ID=$(aws apigatewayv2 get-apis --query "Items[?Name=='$API_NAME'].ApiId | [0]" --output text)
 if none "$API_ID"; then
   API_ID=$(aws apigatewayv2 create-api --name "$API_NAME" --protocol-type HTTP --query ApiId --output text)
@@ -147,7 +148,7 @@ else
 fi
 API_URL="http://$API_ID.execute-api.localhost.floci.io:4566"
 
-step "5/6 EventBridge Scheduler: run the checks every minute"
+step "5/7 EventBridge Scheduler: run the checks every minute"
 # The scheduler gets its own role that may ONLY invoke the checks function (least privilege).
 if ! aws iam get-role --role-name "$SCHED_ROLE" >/dev/null 2>&1; then
   aws iam create-role --role-name "$SCHED_ROLE" \
@@ -176,7 +177,31 @@ else
 fi
 rm -f checks-result.json
 
-step "6/6 Quick test"
+step "6/7 CloudWatch alarms: get warned about server errors and attacks"
+# Metric filters turn matching log lines into numbers; alarms watch those numbers and
+# switch to ALARM (and notify the SNS topic) when a limit is crossed.
+LOG_GROUP="/aws/lambda/$FN"
+aws logs create-log-group --log-group-name "$LOG_GROUP" >/dev/null 2>&1 || true
+aws logs put-metric-filter --log-group-name "$LOG_GROUP" --filter-name hader-registration-server-errors \
+  --filter-pattern server_error \
+  --metric-transformations metricName=ServerErrors,metricNamespace=HaderRegistration,metricValue=1,defaultValue=0
+aws logs put-metric-filter --log-group-name "$LOG_GROUP" --filter-name hader-registration-access-denied \
+  --filter-pattern access_denied \
+  --metric-transformations metricName=AccessDenied,metricNamespace=HaderRegistration,metricValue=1,defaultValue=0
+TOPIC_ARN=$(aws sns create-topic --name hader-registration-alerts --query TopicArn --output text)
+aws cloudwatch put-metric-alarm --alarm-name hader-registration-server-errors \
+  --alarm-description "Any 500 error in the Registration API within 5 minutes" \
+  --namespace HaderRegistration --metric-name ServerErrors --statistic Sum \
+  --period 300 --evaluation-periods 1 --threshold 1 --comparison-operator GreaterThanOrEqualToThreshold \
+  --treat-missing-data notBreaching --alarm-actions "$TOPIC_ARN"
+aws cloudwatch put-metric-alarm --alarm-name hader-registration-access-denied \
+  --alarm-description "20 or more refused requests (401/403) within 5 minutes: possible attack" \
+  --namespace HaderRegistration --metric-name AccessDenied --statistic Sum \
+  --period 300 --evaluation-periods 1 --threshold 20 --comparison-operator GreaterThanOrEqualToThreshold \
+  --treat-missing-data notBreaching --alarm-actions "$TOPIC_ARN"
+echo "Alarms hader-registration-server-errors and hader-registration-access-denied -> SNS $TOPIC_ARN"
+
+step "7/7 Quick test"
 echo "GET $API_URL/health"
 curl -s -m 30 "$API_URL/health" || echo "(no answer yet: wait 30 seconds and try again)"
 echo
@@ -185,3 +210,4 @@ echo "Done."
 echo "  API:      $API_URL"
 echo "  Logs:     aws logs tail /aws/lambda/$FN --since 15m --format short"
 echo "  Checks:   aws logs tail /aws/lambda/$CHECKS_FN --since 15m --format short"
+echo "  Alarms:   aws cloudwatch describe-alarms --alarm-name-prefix hader-registration --query 'MetricAlarms[].[AlarmName,StateValue]' --output table"

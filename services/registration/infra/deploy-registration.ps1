@@ -12,6 +12,7 @@
 #   2. starts Floci if needed      6. two Lambda functions: the API + the scheduled checks
 #   3. checks it is Floci          7. API Gateway HTTP API: only this service's routes + throttling
 #   4. builds lambda.zip           8. EventBridge Scheduler: run the checks every minute
+#                                  9. CloudWatch alarms (+ SNS topic) for server errors and attacks
 # It only touches hader-registration-* / hader-http-api / hader-scheduler-* resources.
 # =====================================================================
 $ErrorActionPreference = 'Stop'
@@ -93,7 +94,7 @@ function Deploy-Function([string]$name, [string]$handler, [string]$envArg, $exis
 }
 
 try {
-  Step '1/8 Check the tools'
+  Step '1/9 Check the tools'
   if (!(Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Docker Desktop is not installed.' }
   if (!(Get-Command aws -ErrorAction SilentlyContinue))    { throw 'The AWS CLI is not installed: https://aws.amazon.com/cli/' }
   if (!(Get-Command node -ErrorAction SilentlyContinue))   { throw 'Node.js is not installed: https://nodejs.org' }
@@ -103,7 +104,7 @@ try {
   }
   Write-Host 'Docker, AWS CLI, Node.js and .env found'
 
-  Step '2/8 Start Floci (local AWS) on localhost:4566'
+  Step '2/9 Start Floci (local AWS) on localhost:4566'
   if (Floci-Answers) {
     Write-Host 'Floci is already running, using it'
   } else {
@@ -133,12 +134,12 @@ try {
     Write-Host 'Floci is ready'
   }
 
-  Step '3/8 Check that we are talking to Floci'
+  Step '3/9 Check that we are talking to Floci'
   $identity = Invoke-Floci @('sts','get-caller-identity')
   if ($identity.Account -ne $account) { throw "Account is $($identity.Account), expected $account. This script only deploys to Floci." }
   Write-Host "OK, account $account"
 
-  Step '4/8 Build lambda.zip (code + certificate + libraries, never .env)'
+  Step '4/9 Build lambda.zip (code + certificate + libraries, never .env)'
   & npm install --silent
   if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }
   & npm run zip --silent
@@ -147,7 +148,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Could not read DATABASE_URL and SUPABASE_URL from .env.' }
   $envArg = Temp-File $envJson     # secrets go into a temporary file, deleted at the end
 
-  Step '5/8 IAM role: the functions may only write their own logs (least privilege)'
+  Step '5/9 IAM role: the functions may only write their own logs (least privilege)'
   $roleNames = @((Invoke-Floci @('iam','list-roles')).Roles | ForEach-Object { $_.RoleName })
   if ($roleNames -notcontains $role) {
     Invoke-Floci @('iam','create-role','--role-name',$role,
@@ -158,13 +159,13 @@ try {
     '--policy-document','file://infra/iam/registration-logs-policy.json') | Out-Null
   Write-Host 'Policy hader-registration-logs attached'
 
-  Step '6/8 Create or update the two Lambda functions'
+  Step '6/9 Create or update the two Lambda functions'
   $functions = @((Invoke-Floci @('lambda','list-functions')).Functions | ForEach-Object { $_.FunctionName })
   Deploy-Function $fn 'lambda.handler' $envArg $functions
   Deploy-Function $checksFn 'scheduler.handler' $envArg $functions
   Remove-Item 'lambda.zip' -Force
 
-  Step '7/8 API Gateway: one HTTP API, only the routes this service needs'
+  Step '7/9 API Gateway: one HTTP API, only the routes this service needs'
   $api = @((Invoke-Floci @('apigatewayv2','get-apis')).Items) | Where-Object { $_.Name -eq $apiName } | Select-Object -First 1
   if (!$api) { $api = Invoke-Floci @('apigatewayv2','create-api','--name',$apiName,'--protocol-type','HTTP') }
   $apiId = $api.ApiId
@@ -211,7 +212,7 @@ try {
     Write-Host "API Gateway may now call $fn (and nobody else may)"
   } else { Write-Host 'Permission for API Gateway already exists' }
 
-  Step '8/8 EventBridge Scheduler: run the checks every minute'
+  Step '8/9 EventBridge Scheduler: run the checks every minute'
   $roleNames = @((Invoke-Floci @('iam','list-roles')).Roles | ForEach-Object { $_.RoleName })
   if ($roleNames -notcontains $schedRole) {
     Invoke-Floci @('iam','create-role','--role-name',$schedRole,
@@ -234,6 +235,30 @@ try {
     Write-Host "Checks ran once now: $(Get-Content $resultFile -Raw)"
   } else { Write-Host '(could not run the checks now; the schedule will run them within a minute)' }
 
+  Step '9/9 CloudWatch alarms: get warned about server errors and attacks'
+  # Metric filters turn matching log lines into numbers; alarms watch those numbers and
+  # switch to ALARM (and notify the SNS topic) when a limit is crossed.
+  $logGroup = "/aws/lambda/$fn"
+  Try-Floci @('logs','create-log-group','--log-group-name',$logGroup) | Out-Null
+  Invoke-Floci @('logs','put-metric-filter','--log-group-name',$logGroup,'--filter-name','hader-registration-server-errors',
+    '--filter-pattern','server_error',
+    '--metric-transformations','metricName=ServerErrors,metricNamespace=HaderRegistration,metricValue=1,defaultValue=0') | Out-Null
+  Invoke-Floci @('logs','put-metric-filter','--log-group-name',$logGroup,'--filter-name','hader-registration-access-denied',
+    '--filter-pattern','access_denied',
+    '--metric-transformations','metricName=AccessDenied,metricNamespace=HaderRegistration,metricValue=1,defaultValue=0') | Out-Null
+  $topicArn = (Invoke-Floci @('sns','create-topic','--name','hader-registration-alerts')).TopicArn
+  Invoke-Floci @('cloudwatch','put-metric-alarm','--alarm-name','hader-registration-server-errors',
+    '--alarm-description','Any 500 error in the Registration API within 5 minutes',
+    '--namespace','HaderRegistration','--metric-name','ServerErrors','--statistic','Sum',
+    '--period','300','--evaluation-periods','1','--threshold','1','--comparison-operator','GreaterThanOrEqualToThreshold',
+    '--treat-missing-data','notBreaching','--alarm-actions',$topicArn) | Out-Null
+  Invoke-Floci @('cloudwatch','put-metric-alarm','--alarm-name','hader-registration-access-denied',
+    '--alarm-description','20 or more refused requests (401/403) within 5 minutes: possible attack',
+    '--namespace','HaderRegistration','--metric-name','AccessDenied','--statistic','Sum',
+    '--period','300','--evaluation-periods','1','--threshold','20','--comparison-operator','GreaterThanOrEqualToThreshold',
+    '--treat-missing-data','notBreaching','--alarm-actions',$topicArn) | Out-Null
+  Write-Host "Alarms hader-registration-server-errors and hader-registration-access-denied -> SNS $topicArn"
+
   $apiUrl = "http://$apiId.execute-api.localhost.floci.io:4566"
   Write-Host ''
   Write-Host "Quick test: GET $apiUrl/health"
@@ -246,6 +271,7 @@ try {
   Write-Host "  Website: put this address in shared\config.js as REGISTRATION_API"
   Write-Host "  Logs:    aws logs tail /aws/lambda/$fn --since 15m --endpoint-url $endpoint"
   Write-Host "  Checks:  aws logs tail /aws/lambda/$checksFn --since 15m --endpoint-url $endpoint"
+  Write-Host "  Alarms:  aws cloudwatch describe-alarms --alarm-name-prefix hader-registration --endpoint-url $endpoint --output table"
 }
 finally {
   foreach ($f in $tempFiles) { if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }

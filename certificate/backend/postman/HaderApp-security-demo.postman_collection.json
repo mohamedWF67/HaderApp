@@ -1,0 +1,1011 @@
+{
+  "info": {
+    "_postman_id": "5ea34fe8-9420-41ba-a6ee-0bcd0395daad",
+    "name": "HaderApp - security demo (Group 40)",
+    "description": "Security scenarios for the demo video and report (section 12).\n\n1. Fill in the variables (Variables tab): supabasePublishableKey (from shared/config.js), and each account's email + password. Put passwords in CURRENT value only, so they are never exported or committed.\n2. Run the '0. Setup' folder once.\n3. Click through folders 1-6 in order (6, the rate limit, uses up the minute's verify allowance, so it goes last); every request has a test showing the expected status code.\n\nNothing here changes data: refused requests are refused before any write, and the only allowed requests are reads.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Setup - run once before recording",
+      "description": "Logs in each account through Supabase Auth and saves the tokens into collection variables (nothing to paste). Then finds the attendee's certificate to test against.",
+      "item": [
+        {
+          "name": "Log in: attendee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabasePublishableKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{attendeeEmail}}\", \"password\": \"{{attendeePassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Attendee who owns a certificate."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logged in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('attendeeToken', pm.response.json().access_token);",
+                  "console.log('attendeeToken saved');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in: second attendee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabasePublishableKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{attendee2Email}}\", \"password\": \"{{attendee2Password}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A different attendee (does NOT own the certificate)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logged in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('attendee2Token', pm.response.json().access_token);",
+                  "console.log('attendee2Token saved');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in: organizer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabasePublishableKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{organizerEmail}}\", \"password\": \"{{organizerPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "An organizer who does NOT organize the certificate's workshop (otherwise test 3.2 returns 200). Use a different organizer for the end-to-end part of the video."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logged in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('organizerToken', pm.response.json().access_token);",
+                  "console.log('organizerToken saved');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in: user with no role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabasePublishableKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{supabaseUrl}}/auth/v1/token?grant_type=password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{noRoleEmail}}\", \"password\": \"{{noRolePassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Account with no profile/role."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('logged in', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('noRoleToken', pm.response.json().access_token);",
+                  "console.log('noRoleToken saved');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find the attendee's certificate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "Saves certId, verifyCode and certWorkshopId of the attendee's newest certificate that is not revoked."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.json().certificates || []).find(x => !x.revoked_at);",
+                  "pm.test('attendee has a valid certificate', () => pm.expect(c, 'generate one in the app first').to.be.ok);",
+                  "if (c) {",
+                  "  pm.collectionVariables.set('certId', c.certificate_id);",
+                  "  pm.collectionVariables.set('verifyCode', c.verification_code);",
+                  "  pm.collectionVariables.set('certWorkshopId', String(c.workshop_id));",
+                  "  console.log('Using certificate', c.certificate_id, 'workshop', c.workshop_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Login required (401)",
+      "item": [
+        {
+          "name": "No token: my certificates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "Protected route with no Authorization header."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forged token (signature changed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "A real token whose signature was altered. The backend checks it against Supabase's public keys and rejects it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const p = pm.collectionVariables.get('attendeeToken').split('.');",
+                  "const forged = `${p[0]}.${p[1]}.${p[2].slice(0, -6)}AAAAAA`;",
+                  "pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${forged}` });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Garbage token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer not-a-real-token"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "Not a JWT at all."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Wrong role (403) - enforced in the backend",
+      "item": [
+        {
+          "name": "Attendee tries to REVOKE a certificate",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/{{certId}}/revoke",
+            "description": "Revoking is organizer-only. The attendee's role comes from public.profiles, not from the request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reason\": \"demo - this must be refused\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attendee tries to list a workshop's certificates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/workshop/{{certWorkshopId}}",
+            "description": "Organizer-only route."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Organizer tries attendee-only 'my certificates'",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "Organizers do not earn certificates."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Organizer tries to generate a certificate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates",
+            "description": "Attendee-only route.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"workshopId\": 1 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No-role user: my certificates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noRoleToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/me",
+            "description": "A user with no role in profiles is refused everything."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registration: attendee tries to CREATE a workshop",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{registrationUrl}}/workshops",
+            "description": "Teammate's service (Registration): creating workshops is organizer-only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Should be refused\",\n  \"description\": \"\",\n  \"date\": \"2027-01-15T10:00:00Z\",\n  \"totalSeats\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Ownership checks (403) - changing the ID in the URL",
+      "item": [
+        {
+          "name": "Second attendee downloads the first attendee's certificate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendee2Token}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/{{certId}}",
+            "description": "Same route, someone else's certificate id. The backend compares the certificate's owner with the caller."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('says it belongs to another user', () => pm.expect(pm.response.json().error).to.include('another user'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Organizer lists certificates of a workshop they don't run",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/workshop/{{certWorkshopId}}",
+            "description": "The workshop's organizerId (from the Registration service) must be the caller. Use an organizer who does NOT run this workshop."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Certificate that doesn't exist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/00000000-0000-4000-8000-000000000000",
+            "description": "Unknown id -> 404 (no data leaked)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Invalid input (400)",
+      "item": [
+        {
+          "name": "Generate: workshopId with SQL injection text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates",
+            "description": "workshopId must be a whole number; anything else is refused before any database query.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"workshopId\": \"1; DROP TABLE certificates;--\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate: body is not JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates",
+            "description": "Malformed JSON body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ workshopId: oops",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate: no workshopId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates",
+            "description": "Missing required field.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eligibility: workshop id is text",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/eligibility/abc",
+            "description": "Path parameter validation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke: no reason given",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/00000000-0000-4000-8000-000000000000/revoke",
+            "description": "A reason (3-200 characters) is required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke: 500-character reason",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/00000000-0000-4000-8000-000000000000/revoke",
+            "description": "Too long.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify: malformed code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{certUrl}}/certificates/verify/1' OR 1=1--",
+            "description": "Code must be 20 URL-safe characters; nothing is looked up."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registration: workshop with 0 seats and no title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organizerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{registrationUrl}}/workshops",
+            "description": "Teammate's service (Registration): input validation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"date\": \"2027-01-15T10:00:00Z\",\n  \"totalSeats\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Allowed requests (for contrast)",
+      "item": [
+        {
+          "name": "Public verify of a real certificate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{certUrl}}/certificates/verify/{{verifyCode}}",
+            "description": "No login needed; returns only what is printed on the certificate."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('valid: true', () => pm.expect(pm.response.json().valid).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Attendee downloads OWN certificate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{attendeeToken}}"
+              }
+            ],
+            "url": "{{certUrl}}/certificates/{{certId}}",
+            "description": "Owner -> 200 (PDF)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Rate limiting (429) - run LAST",
+      "item": [
+        {
+          "name": "11th verify within a minute is refused",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{certUrl}}/certificates/verify/AAAAAAAAAAAAAAAAAAAA",
+            "description": "Per-IP limit of 10 verifications per minute (stops verification codes being guessed). The pre-request script sends 10 first, so one click shows the 429. Wait a minute before using verify again."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 429', () => pm.response.to.have.status(429));",
+                  "pm.test('has Retry-After header', () => pm.expect(pm.response.headers.get('Retry-After')).to.be.ok);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sends 10 verify requests first, one after another; this request is then the 11th.",
+                  "const url = pm.collectionVariables.get('certUrl') + '/certificates/verify/AAAAAAAAAAAAAAAAAAAA';",
+                  "let sent = 0;",
+                  "function next() { if (sent++ < 10) pm.sendRequest(url, () => next()); }",
+                  "next();"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "certUrl",
+      "value": "http://localhost:4566/execute-api/db247435f9/prod"
+    },
+    {
+      "key": "registrationUrl",
+      "value": "http://localhost:4566/execute-api/28d22b6d02/$default"
+    },
+    {
+      "key": "supabaseUrl",
+      "value": "https://lydhdtlxodhyqjhvcfdu.supabase.co"
+    },
+    {
+      "key": "supabasePublishableKey",
+      "value": ""
+    },
+    {
+      "key": "attendeeEmail",
+      "value": ""
+    },
+    {
+      "key": "attendeePassword",
+      "value": ""
+    },
+    {
+      "key": "attendee2Email",
+      "value": ""
+    },
+    {
+      "key": "attendee2Password",
+      "value": ""
+    },
+    {
+      "key": "organizerEmail",
+      "value": "testorganizer@hader.test"
+    },
+    {
+      "key": "organizerPassword",
+      "value": ""
+    },
+    {
+      "key": "noRoleEmail",
+      "value": "noroles@hader.test"
+    },
+    {
+      "key": "noRolePassword",
+      "value": ""
+    },
+    {
+      "key": "attendeeToken",
+      "value": ""
+    },
+    {
+      "key": "attendee2Token",
+      "value": ""
+    },
+    {
+      "key": "organizerToken",
+      "value": ""
+    },
+    {
+      "key": "noRoleToken",
+      "value": ""
+    },
+    {
+      "key": "certId",
+      "value": ""
+    },
+    {
+      "key": "verifyCode",
+      "value": ""
+    },
+    {
+      "key": "certWorkshopId",
+      "value": ""
+    }
+  ]
+}

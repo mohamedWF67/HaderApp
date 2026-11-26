@@ -1,0 +1,43 @@
+meta {
+  name: [Registration] Organizer creates a workshop
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{registrationUrl}}/workshops
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "title": "{{e2eTitle}}",
+    "description": "Integrated test across Registration, Attendance and Certificates",
+    "date": "{{e2eDate}}",
+    "totalSeats": 5
+  }
+}
+
+script:pre-request {
+  bru.setVar("e2eDate", new Date(Date.now() + 7 * 864e5).toISOString());
+  bru.setVar("e2eTitle", "E2E test " + new Date().toISOString().slice(0, 16).replace("T", " "));
+}
+
+script:post-response {
+  bru.setVar("e2eWorkshopId", String(res.getBody().workshopId));
+}
+
+tests {
+  test("status is 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  NORMAL. Creates a fresh workshop one week ahead. Saves e2eWorkshopId.
+}

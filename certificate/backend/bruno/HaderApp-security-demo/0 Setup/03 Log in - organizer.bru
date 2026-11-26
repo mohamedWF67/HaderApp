@@ -1,0 +1,37 @@
+meta {
+  name: Log in: organizer
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{supabaseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{supabasePublishableKey}}
+}
+
+body:json {
+  {
+    "email": "{{organizerEmail}}",
+    "password": "{{organizerPassword}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("organizerToken", res.getBody().access_token);
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  An organizer who does NOT run the attendee's certificate workshop (otherwise 3.2 returns 200).
+  Folder 6 uses this organizer to create its own test workshop.
+}

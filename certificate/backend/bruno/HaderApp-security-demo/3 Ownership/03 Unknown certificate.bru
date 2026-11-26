@@ -1,0 +1,25 @@
+meta {
+  name: Certificate that doesn't exist
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{certUrl}}/certificates/00000000-0000-4000-8000-000000000000
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+tests {
+  test("status is 404", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  Unknown id -> 404, nothing leaked.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: [Attendance] INVALID - mark the same attendee twice
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/sessions/{{e2eSessionId}}/attendance
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "registrationId": {{e2eRegistrationId}}
+  }
+}
+
+tests {
+  test("status is 409", function () {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  INVALID. ALREADY_CHECKED_IN.
+}

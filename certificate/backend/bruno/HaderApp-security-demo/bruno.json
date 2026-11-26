@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "HaderApp - security demo (Group 40)",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

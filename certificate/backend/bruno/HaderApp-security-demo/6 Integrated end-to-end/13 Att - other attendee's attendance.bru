@@ -1,0 +1,25 @@
+meta {
+  name: [Attendance] INVALID - another attendee's attendance
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/attendance/{{e2eAttendeeId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  INVALID (ownership). You can only view your own attendance.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: [Certificates] Public verification shows REVOKED
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{certUrl}}/certificates/verify/{{e2eCode}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("revoked", function () {
+    expect(res.getBody().valid).to.equal(false);
+    expect(res.getBody().revoked).to.equal(true);
+  });
+}
+
+docs {
+  NORMAL.
+}

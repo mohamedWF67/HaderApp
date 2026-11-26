@@ -1,0 +1,31 @@
+meta {
+  name: Attendee tries to REVOKE a certificate
+  type: http
+  seq: 1
+}
+
+patch {
+  url: {{certUrl}}/certificates/{{certId}}/revoke
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+body:json {
+  {
+    "reason": "demo - this must be refused"
+  }
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  Revoking is organizer-only. The role comes from public.profiles, never from the request.
+}

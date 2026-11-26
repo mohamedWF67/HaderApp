@@ -1,0 +1,25 @@
+meta {
+  name: [Registration] INVALID - attendee registers twice
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{registrationUrl}}/workshops/{{e2eWorkshopId}}/registrations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+tests {
+  test("status is 409", function () {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  INVALID. ALREADY_REGISTERED; the seat count is not reduced again.
+}

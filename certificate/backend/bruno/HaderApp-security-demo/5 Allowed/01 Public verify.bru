@@ -1,0 +1,24 @@
+meta {
+  name: Public verify of a real certificate
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{certUrl}}/certificates/verify/{{verifyCode}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("valid: true", function () {
+    expect(res.getBody().valid).to.equal(true);
+  });
+}
+
+docs {
+  No login needed; returns only what is printed on the certificate.
+}

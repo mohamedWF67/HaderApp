@@ -1,0 +1,31 @@
+meta {
+  name: [Certificates] INVALID - revoke again
+  type: http
+  seq: 23
+}
+
+patch {
+  url: {{certUrl}}/certificates/{{e2eCertId}}/revoke
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "reason": "again"
+  }
+}
+
+tests {
+  test("status is 409", function () {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  INVALID. A certificate can be revoked only once.
+}

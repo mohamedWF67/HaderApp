@@ -1,0 +1,24 @@
+meta {
+  name: [Certificates] Public verification (no login)
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{certUrl}}/certificates/verify/{{e2eCode}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("valid", function () {
+    expect(res.getBody().valid).to.equal(true);
+  });
+}
+
+docs {
+  NORMAL.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: [Certificates] INVALID - download a revoked certificate
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{certUrl}}/certificates/{{e2eCertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+tests {
+  test("status is 410", function () {
+    expect(res.getStatus()).to.equal(410);
+  });
+}
+
+docs {
+  INVALID. Revoked certificates can no longer be downloaded.
+}

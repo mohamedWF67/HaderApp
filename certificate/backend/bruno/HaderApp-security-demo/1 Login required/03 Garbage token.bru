@@ -1,0 +1,25 @@
+meta {
+  name: Garbage token
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer not-a-real-token
+}
+
+tests {
+  test("status is 401", function () {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
+
+docs {
+  Not a JWT at all.
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Log in: no role
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{supabaseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{supabasePublishableKey}}
+}
+
+body:json {
+  {
+    "email": "{{noRoleEmail}}",
+    "password": "{{noRolePassword}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("noRoleToken", res.getBody().access_token);
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Account with no profile/role.
+}

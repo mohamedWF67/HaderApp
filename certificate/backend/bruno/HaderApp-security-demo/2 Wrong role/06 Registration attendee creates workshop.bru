@@ -1,0 +1,34 @@
+meta {
+  name: Registration - attendee tries to CREATE a workshop
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{registrationUrl}}/workshops
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+body:json {
+  {
+    "title": "Should be refused",
+    "description": "",
+    "date": "2027-01-15T10:00:00Z",
+    "totalSeats": 10
+  }
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  Teammate's service (Registration): creating workshops is organizer-only.
+}

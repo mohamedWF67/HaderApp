@@ -1,0 +1,12 @@
+docs {
+  Security scenarios for the demo video and report (section 12).
+
+  1. Top-right environment menu -> select "Local" -> Configure:
+     fill supabasePublishableKey (from shared/config.js) and each account's email + password.
+     Passwords and the key are SECRET variables: Bruno keeps them on this computer, never in these files.
+  2. Run folder "0. Setup" once (saves tokens + the certificate to test).
+  3. Click through folders 1-7 in order (or Run the collection). Folder 7 uses up the minute's verify allowance, so it goes last.
+     Folder 6 is the integrated end-to-end test across all three services (it creates a test workshop).
+
+  Nothing here changes data: refused requests are refused before any write; allowed ones only read.
+}

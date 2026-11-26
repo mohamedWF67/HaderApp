@@ -1,0 +1,21 @@
+meta {
+  name: No token - my certificates
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+tests {
+  test("status is 401", function () {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
+
+docs {
+  Protected route with no Authorization header.
+}

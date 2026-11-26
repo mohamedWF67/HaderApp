@@ -1,0 +1,25 @@
+meta {
+  name: Attendee downloads OWN certificate
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{certUrl}}/certificates/{{certId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Owner -> 200 (PDF).
+}

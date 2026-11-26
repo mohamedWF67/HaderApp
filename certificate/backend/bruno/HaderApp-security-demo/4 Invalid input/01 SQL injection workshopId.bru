@@ -1,0 +1,31 @@
+meta {
+  name: Generate - workshopId with SQL injection text
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{certUrl}}/certificates
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+body:json {
+  {
+    "workshopId": "1; DROP TABLE certificates;--"
+  }
+}
+
+tests {
+  test("status is 400", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+}
+
+docs {
+  workshopId must be a whole number; anything else is refused before any database query.
+}

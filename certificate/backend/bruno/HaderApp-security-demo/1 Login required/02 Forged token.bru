@@ -1,0 +1,27 @@
+meta {
+  name: Forged token (signature changed)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  const p = bru.getVar("attendeeToken").split(".");
+  const forged = `${p[0]}.${p[1]}.${p[2].slice(0, -6)}AAAAAA`;
+  req.setHeader("Authorization", `Bearer ${forged}`);
+}
+
+tests {
+  test("status is 401", function () {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
+
+docs {
+  A real token with its signature altered. Checked against Supabase's public keys, so it is rejected.
+}

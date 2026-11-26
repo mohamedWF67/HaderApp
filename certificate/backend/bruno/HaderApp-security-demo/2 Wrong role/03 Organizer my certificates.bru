@@ -1,0 +1,25 @@
+meta {
+  name: Organizer tries attendee-only my certificates
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  Organizers do not earn certificates.
+}

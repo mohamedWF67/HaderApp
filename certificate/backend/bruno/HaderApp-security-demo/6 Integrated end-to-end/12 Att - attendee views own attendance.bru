@@ -1,0 +1,29 @@
+meta {
+  name: [Attendance] Attendee views own attendance
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/attendance/{{e2eAttendeeId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("1 of 1 sessions", function () {
+    expect(res.getBody().totalSessions).to.equal(1);
+    expect(res.getBody().attendedSessions).to.equal(1);
+  });
+}
+
+docs {
+  NORMAL. This is the same call the Certificate service makes.
+}

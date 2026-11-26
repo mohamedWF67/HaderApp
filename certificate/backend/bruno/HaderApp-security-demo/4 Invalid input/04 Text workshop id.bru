@@ -1,0 +1,25 @@
+meta {
+  name: Eligibility - workshop id is text
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{certUrl}}/certificates/eligibility/abc
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+tests {
+  test("status is 400", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+}
+
+docs {
+  Path parameter validation.
+}

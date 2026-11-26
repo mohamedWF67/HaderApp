@@ -2,21 +2,36 @@ import { verifyUrl } from './pdf.js';
 
 // Calls to the other two services (through their APIs, never their tables) and to Brevo.
 
-const get = async (url, token) => {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(4000) });
+// Another service being down, slow or failing is not this service's fault: answer 503
+// ("try again later") naming the service, instead of a vague 500. 404 = "not found" (normal).
+export class UpstreamError extends Error {
+  constructor(service, reason) {
+    super(`The ${service} service is unavailable right now. Please try again in a moment.`);
+    this.service = service;
+    this.reason = reason;
+  }
+}
+
+const get = async (service, url, token) => {
+  let res;
+  try {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
+  } catch (err) {
+    throw new UpstreamError(service, err.name === 'TimeoutError' ? 'timeout after 6 s' : err.message);
+  }
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`${url} returned ${res.status}`);
+  if (!res.ok) throw new UpstreamError(service, `returned ${res.status}`);
   return res.json();
 };
 
 // Attendance service (Mohamed Ahmed): expected { totalSessions, attendedSessions }
 export async function getAttendance(workshopId, attendeeId, token) {
-  return get(`${process.env.ATTENDANCE_API_URL}/workshops/${workshopId}/attendance/${attendeeId}`, token);
+  return get('Attendance', `${process.env.ATTENDANCE_API_URL}/workshops/${workshopId}/attendance/${attendeeId}`, token);
 }
 
 // Registration service (Nourhan): find the workshop in GET /workshops to get its title
 export async function getWorkshop(workshopId, token) {
-  const list = await get(`${process.env.REGISTRATION_API_URL}/workshops`, token);
+  const list = await get('Registration', `${process.env.REGISTRATION_API_URL}/workshops`, token);
   const items = Array.isArray(list) ? list : list?.workshops || [];
   return items.find((w) => String(w.workshopId ?? w.id) === String(workshopId)) || null;
 }

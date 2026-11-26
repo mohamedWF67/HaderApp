@@ -1,0 +1,34 @@
+meta {
+  name: [Certificates] INVALID - generate before any session
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{certUrl}}/certificates
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+body:json {
+  {
+    "workshopId": {{e2eWorkshopId}}
+  }
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+  test("explains attendance", function () {
+    expect(res.getBody().error).to.include("sessions");
+  });
+}
+
+docs {
+  INVALID. Certificates calls Attendance: 0 of 0 sessions attended -> refused.
+}

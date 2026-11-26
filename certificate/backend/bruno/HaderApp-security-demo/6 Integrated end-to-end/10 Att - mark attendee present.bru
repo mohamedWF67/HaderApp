@@ -1,0 +1,31 @@
+meta {
+  name: [Attendance] Organizer marks the attendee present
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/sessions/{{e2eSessionId}}/attendance
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "registrationId": {{e2eRegistrationId}}
+  }
+}
+
+tests {
+  test("status is 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  NORMAL.
+}

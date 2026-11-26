@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import { getUser, AuthError } from './auth.js';
 import * as db from './db.js';
-import { getAttendance, getWorkshop, sendEmail, sendRevokedEmail } from './services.js';
+import { getAttendance, getWorkshop, sendEmail, sendRevokedEmail, UpstreamError } from './services.js';
 import { makePdf } from './pdf.js';
 
 const ALLOWED_ORIGINS = (process.env.FRONTEND_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
@@ -266,6 +266,10 @@ app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((err, req, res, next) => {
   if (err instanceof AuthError) return res.status(401).json({ error: err.message });
   if (err instanceof ApiError) return res.status(err.status).json({ error: err.message });
+  if (err instanceof UpstreamError) {
+    console.log(JSON.stringify({ event: 'upstream_unavailable', service: err.service, reason: err.reason, path: req.path }));
+    return res.status(503).json({ error: err.message });
+  }
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Body must be JSON' });
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large' });
   console.error(JSON.stringify({ event: 'error', message: err.message }));

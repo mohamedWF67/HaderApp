@@ -1,0 +1,28 @@
+meta {
+  name: [Certificates] Attendee checks eligibility
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{certUrl}}/certificates/eligibility/{{e2eWorkshopId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("eligible", function () {
+    expect(res.getBody().eligible).to.equal(true);
+  });
+}
+
+docs {
+  NORMAL. Certificates -> Attendance (1 of 1 attended).
+}

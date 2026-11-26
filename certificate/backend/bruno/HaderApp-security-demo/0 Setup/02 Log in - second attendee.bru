@@ -1,0 +1,36 @@
+meta {
+  name: Log in: second attendee
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{supabaseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{supabasePublishableKey}}
+}
+
+body:json {
+  {
+    "email": "{{attendee2Email}}",
+    "password": "{{attendee2Password}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("attendee2Token", res.getBody().access_token);
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  A different attendee who does NOT own the certificate. Folder 6 uses this account as its attendee (it receives the emails).
+}

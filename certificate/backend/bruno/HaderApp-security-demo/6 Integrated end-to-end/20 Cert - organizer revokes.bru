@@ -1,0 +1,31 @@
+meta {
+  name: [Certificates] Organizer revokes the certificate
+  type: http
+  seq: 20
+}
+
+patch {
+  url: {{certUrl}}/certificates/{{e2eCertId}}/revoke
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "reason": "Integrated test - revocation flow"
+  }
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  NORMAL. Certificates -> Registration (is this the workshop's organizer?) -> database -> Brevo email to the attendee.
+}

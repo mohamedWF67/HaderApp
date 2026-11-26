@@ -1,0 +1,30 @@
+meta {
+  name: [Registration] Attendee registers
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{registrationUrl}}/workshops/{{e2eWorkshopId}}/registrations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+script:post-response {
+  bru.setVar("e2eRegistrationId", res.getBody().registrationId);
+  bru.setVar("e2eAttendeeId", res.getBody().attendeeId);
+}
+
+tests {
+  test("status is 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  NORMAL. Saves e2eRegistrationId and the attendee's user id.
+}

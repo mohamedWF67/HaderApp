@@ -1,0 +1,37 @@
+meta {
+  name: Find the attendee's certificate
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+script:post-response {
+  const c = (res.getBody().certificates || []).find((x) => !x.revoked_at);
+  if (c) {
+    bru.setVar("certId", c.certificate_id);
+    bru.setVar("verifyCode", c.verification_code);
+    bru.setVar("certWorkshopId", String(c.workshop_id));
+  }
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("attendee has a valid certificate (generate one in the app first)", function () {
+    expect((res.getBody().certificates || []).some((x) => !x.revoked_at)).to.equal(true);
+  });
+}
+
+docs {
+  Saves certId, verifyCode and certWorkshopId of the attendee's newest certificate that is not revoked.
+}

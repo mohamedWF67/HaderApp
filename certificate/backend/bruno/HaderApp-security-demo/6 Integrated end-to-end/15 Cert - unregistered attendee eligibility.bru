@@ -1,0 +1,25 @@
+meta {
+  name: [Certificates] INVALID - unregistered attendee checks eligibility
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{certUrl}}/certificates/eligibility/{{e2eWorkshopId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendeeToken}}
+}
+
+tests {
+  test("status is 404", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  INVALID. Attendance has no record for someone who never registered.
+}

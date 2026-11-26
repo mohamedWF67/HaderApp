@@ -1,0 +1,39 @@
+meta {
+  name: [Certificates] Attendee generates the certificate
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{certUrl}}/certificates
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+body:json {
+  {
+    "workshopId": {{e2eWorkshopId}}
+  }
+}
+
+script:post-response {
+  bru.setVar("e2eCertId", res.getBody().certificate_id);
+  bru.setVar("e2eCode", res.getBody().verification_code);
+}
+
+tests {
+  test("status is 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("email sent through Brevo", function () {
+    expect(res.getBody().emailSent).to.equal(true);
+  });
+}
+
+docs {
+  NORMAL. Certificates -> Attendance (eligible) -> Registration (workshop title) -> database -> Brevo email.
+}

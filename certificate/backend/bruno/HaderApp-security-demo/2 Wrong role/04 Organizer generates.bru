@@ -1,0 +1,31 @@
+meta {
+  name: Organizer tries to generate a certificate
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{certUrl}}/certificates
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "workshopId": 1
+  }
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  Attendee-only route.
+}

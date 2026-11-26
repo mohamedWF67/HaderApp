@@ -1,0 +1,43 @@
+meta {
+  name: [Attendance] Organizer adds a session
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/sessions
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "title": "Session 1",
+    "startTime": "{{e2eStart}}",
+    "endTime": "{{e2eEnd}}"
+  }
+}
+
+script:pre-request {
+  const t = Date.now() + 60000;
+  bru.setVar("e2eStart", new Date(t).toISOString());
+  bru.setVar("e2eEnd", new Date(t + 3600000).toISOString());
+}
+
+script:post-response {
+  bru.setVar("e2eSessionId", String(res.getBody().sessionId));
+}
+
+tests {
+  test("status is 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  NORMAL. Saves e2eSessionId.
+}

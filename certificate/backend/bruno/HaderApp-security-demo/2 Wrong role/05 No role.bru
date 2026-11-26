@@ -1,0 +1,25 @@
+meta {
+  name: No-role user - my certificates
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{certUrl}}/certificates/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{noRoleToken}}
+}
+
+tests {
+  test("status is 403", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  A user with no role in profiles is refused everything.
+}

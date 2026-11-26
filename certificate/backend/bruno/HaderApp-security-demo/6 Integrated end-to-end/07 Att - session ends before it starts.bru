@@ -1,0 +1,33 @@
+meta {
+  name: [Attendance] INVALID - session ends before it starts
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/sessions
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "title": "Backwards",
+    "startTime": "{{e2eEnd}}",
+    "endTime": "{{e2eStart}}"
+  }
+}
+
+tests {
+  test("status is 400", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+}
+
+docs {
+  INVALID. endTime must be after startTime.
+}

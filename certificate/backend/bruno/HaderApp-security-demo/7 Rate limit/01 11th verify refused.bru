@@ -1,0 +1,35 @@
+meta {
+  name: 11th verify within a minute is refused
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{certUrl}}/certificates/verify/AAAAAAAAAAAAAAAAAAAA
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  // Sends 10 verify requests first; this request is then the 11th.
+  const axios = require("axios");
+  const url = bru.getEnvVar("certUrl") + "/certificates/verify/AAAAAAAAAAAAAAAAAAAA";
+  for (let i = 0; i < 10; i++) {
+    await axios.get(url, { validateStatus: () => true });
+  }
+}
+
+tests {
+  test("status is 429", function () {
+    expect(res.getStatus()).to.equal(429);
+  });
+  test("has Retry-After header", function () {
+    expect(res.getHeader("retry-after")).to.be.ok;
+  });
+}
+
+docs {
+  Per-IP limit of 10 verifications per minute (stops verification codes being guessed).
+  The pre-request script sends 10 first, so one click shows the 429.
+  Wait a minute before using verify again.
+}

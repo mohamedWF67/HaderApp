@@ -1,0 +1,36 @@
+meta {
+  name: Log in: attendee
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{supabaseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{supabasePublishableKey}}
+}
+
+body:json {
+  {
+    "email": "{{attendeeEmail}}",
+    "password": "{{attendeePassword}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("attendeeToken", res.getBody().access_token);
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Attendee who owns a certificate. Saves attendeeToken.
+}

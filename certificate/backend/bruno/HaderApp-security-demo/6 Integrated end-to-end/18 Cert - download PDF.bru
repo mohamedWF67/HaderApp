@@ -1,0 +1,25 @@
+meta {
+  name: [Certificates] Attendee downloads the PDF
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{certUrl}}/certificates/{{e2eCertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+tests {
+  test("status is 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  NORMAL.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: [Certificates] INVALID - generate a second time
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{certUrl}}/certificates
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{attendee2Token}}
+}
+
+body:json {
+  {
+    "workshopId": {{e2eWorkshopId}}
+  }
+}
+
+tests {
+  test("status is 409", function () {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  INVALID. One certificate per registration.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: [Attendance] INVALID - mark present before check-in opens
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{attendanceUrl}}/workshops/{{e2eWorkshopId}}/sessions/{{e2eSessionId}}/attendance
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{organizerToken}}
+}
+
+body:json {
+  {
+    "registrationId": {{e2eRegistrationId}}
+  }
+}
+
+tests {
+  test("status is 409", function () {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  INVALID. CHECKIN_CLOSED: attendance can only be marked while check-in is open.
+}

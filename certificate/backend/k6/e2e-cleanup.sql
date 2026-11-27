@@ -8,7 +8,8 @@ CREATE TEMP TABLE k6_workshops ON COMMIT DROP AS
 
 SELECT count(*) AS workshops_to_remove FROM k6_workshops;
 
-DELETE FROM public.certificates  WHERE workshop_id IN (SELECT workshop_id FROM k6_workshops);
+DELETE FROM public.certificates  WHERE registration_id IN (
+  SELECT registration_id FROM public.registrations WHERE workshop_id IN (SELECT workshop_id FROM k6_workshops));
 DELETE FROM public.attendance    WHERE session_id IN (
   SELECT session_id FROM public.sessions WHERE workshop_id IN (SELECT workshop_id FROM k6_workshops));
 DELETE FROM public.sessions      WHERE workshop_id IN (SELECT workshop_id FROM k6_workshops);

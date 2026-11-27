@@ -19,5 +19,10 @@ certificate/backend/out.json
 certificate/backend/api-url.txt
 
 # Backend build files (services/registration)
-*.zip
 checks-result.json
+
+# k6 load test
+certificate/backend/env.loadtest.json
+certificate/backend/k6/results-*.json
+certificate/backend/env.registration-loadtest.json
+certificate/backend/k6/.registration-limit
